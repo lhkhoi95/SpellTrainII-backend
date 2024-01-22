@@ -6,6 +6,12 @@ In the backend directory, run `pip install -r requirements.txt` to install requi
 
 In the backend directory, run `uvicorn api.main:app --reload`
 
+# Accessing Swagger UI:
+
+Open a web browser and visit:
+- http://127.0.0.1:8000/docs
+- Swagger UI will provide a user-friendly interface for testing API endpoints
+
 # API Testing
 
 In the backend directory, run `pytest` to test the api endpoints
@@ -15,9 +21,7 @@ In the backend directory, run `pytest` to test the api endpoints
 - `pytest -v` will print more descriptive information
 - `pytest -s` will show all print statements in the program
 
-# Sending HTTP requests
-
-Axios example:
+# Sending HTTP Requests (Axios Example):
 
 - await axios.get(`http://{your_ip}:8000/`).then((res) => {console.log(res.data);});
 

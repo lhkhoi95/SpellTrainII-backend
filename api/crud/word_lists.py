@@ -2,9 +2,10 @@ from typing import List
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from api.utils.generative_ai import get_word_list_from_AI, get_word_details
+from api.utils.SpellTrainII_AI import SpellTrain2AI
 from api.models import models
 from api.schemas import schemas
+from api.utils.helpers import word_dict
 
 
 def get_word_by_id(db: Session, word_id: int):
@@ -26,25 +27,18 @@ def get_word_list_by_title(db: Session, title: str):
 
 def create_generative_word_list(db: Session, topic: str, user_id: int):
     try:
-        # Try to fetch a list of words from OpenAI API
-        word_list = get_word_list_from_AI(
-            topic=topic)
+        # Try to fetch a list of words from the AI
+        spelltrain2AI = SpellTrain2AI()
+        word_list = spelltrain2AI.get_word_list(topic=topic)
 
         # Create a new word list
         db_word_list = models.WordList(title=topic, ownerId=user_id)
         db.add(db_word_list)
         db.flush()
 
+        # Add words to the word list
         for word in word_list:
-            word_to_add = {
-                'word': word,
-                'definition': '',
-                'rootOrigin': '',
-                'usage': '',
-                'languageOrigin': '',
-                'partsOfSpeech': '',
-                'alternatePronunciation': ''
-            }
+            word_to_add = word_dict(word)
             db_word = models.Word(**word_to_add)
             db.add(db_word)
             db.flush()
@@ -55,6 +49,35 @@ def create_generative_word_list(db: Session, topic: str, user_id: int):
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Integrity Error")
+
+    return db_word_list
+
+
+def get_more_words(db: Session, word_list_id: int):
+    existing_words = []
+    spelltrain2AI = SpellTrain2AI()
+
+    # Get the topic of the word list
+    db_word_list = get_word_list_by_id(db, word_list_id)
+    topic = db_word_list.title
+
+    # Get existing words in database
+    for word in db_word_list.words:
+        existing_words.append(word.word)
+
+    # Get additional words from AI
+    additional_word_list = spelltrain2AI.get_word_list(
+        topic=topic, existing_words=existing_words)
+
+    # Add more words to db
+    for word in additional_word_list:
+        word_to_add = word_dict(word)
+        db_word = models.Word(**word_to_add)
+        db.add(db_word)
+        db.flush()
+        db_word_list.words.append(db_word)
+    db.commit()
+    db.refresh(db_word_list)
 
     return db_word_list
 
@@ -84,46 +107,14 @@ def delete_word_list(db: Session, word_list_id: int):
     return db_word_list
 
 
-def get_more_words(db: Session, word_list_id: int):
-    # get topic
-    db_word_list = get_word_list_by_id(db, word_list_id)
-    topic = db_word_list.title
-    existing_words = []
-    # get existing words
-    for word in db_word_list.words:
-        existing_words.append(word.word)
-
-    # get more words
-    additional_word_list = get_word_list_from_AI(
-        topic=topic, get_more=True, existing_words=existing_words)
-
-    # add more words to db
-    for word in additional_word_list:
-        word_to_add = dict()
-        word_to_add['word'] = word
-        word_to_add['definition'] = ''
-        word_to_add['rootOrigin'] = ''
-        word_to_add['usage'] = ''
-        word_to_add['languageOrigin'] = ''
-        word_to_add['partsOfSpeech'] = ''
-        word_to_add['alternatePronunciation'] = ''
-        db_word = models.Word(**word_to_add)
-        db.add(db_word)
-        db.flush()
-        db_word_list.words.append(db_word)
-    db.commit()
-    db.refresh(db_word_list)
-
-    return db_word_list
-
-
 def get_word_info(db: Session, word_id: int):
+    spelltrain2AI = SpellTrain2AI()
+
     db_word = get_word_by_id(db, word_id)
     db_word_list = get_word_list_by_id(db, db_word.wordListId)
     topic = db_word_list.title
 
-    word_info: schemas.WordInfo = get_word_details(
-        db_word.word, topic)
+    word_info = spelltrain2AI.get_word_details(db_word.word, topic)
 
     db_word.definition = word_info.definition
     db_word.rootOrigin = word_info.rootOrigin
@@ -131,6 +122,7 @@ def get_word_info(db: Session, word_id: int):
     db_word.languageOrigin = word_info.languageOrigin
     db_word.partsOfSpeech = word_info.partsOfSpeech
     db_word.alternatePronunciation = word_info.alternatePronunciation
+
     db.commit()
     db.refresh(db_word)
 

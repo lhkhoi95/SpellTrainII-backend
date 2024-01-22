@@ -74,7 +74,7 @@ def test_create_generative_word_list_no_topic():
 
 def test_get_all_by_uid():
     # Test getting all word lists by user ID
-    response = client.get("/word-lists/get-all-by-uid")
+    response = client.get("/word-lists/get-all")
     assert response.status_code == 200
     assert len(response.json()) > 0
 

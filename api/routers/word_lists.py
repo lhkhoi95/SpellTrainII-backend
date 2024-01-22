@@ -5,7 +5,7 @@ from typing import List
 from api.crud import word_lists as crud
 from api.dependencies import get_db
 from api.schemas.schemas import WordList, Word, WordListUpdate
-from api.utils.generative_ai import evaluate_topic
+from api.utils.SpellTrainII_AI import SpellTrain2AI
 
 router = APIRouter(
     prefix="/word-lists",
@@ -29,9 +29,10 @@ async def create_generative_word_list(topic: str, db: Session = Depends(get_db))
     - HTTPException: If the topic is invalid.
     """
     user_id = 1  # TODO: get user id from auth token. This route requires user login
+    spelltrain2AI = SpellTrain2AI()
 
     # Validate topic
-    evaluated_topic = evaluate_topic(topic)
+    evaluated_topic = spelltrain2AI.evaluate_topic(topic)
     # If topic is invalid, raise an exception with the reason
     if not evaluated_topic.isValid:
         raise HTTPException(
@@ -109,8 +110,8 @@ async def delete_word_list(word_list_id: int, db: Session = Depends(get_db)):
             status_code=400, detail="Error deleting word list")
 
 
-@router.get("/get-all-by-uid", response_model=List[WordList])
-async def get_word_lists_by_uid(db: Session = Depends(get_db)):
+@router.get("/get-all", response_model=List[WordList])
+async def get_all_word_lists(db: Session = Depends(get_db)):
     """
     Retrieve all word lists associated with a user ID.
 

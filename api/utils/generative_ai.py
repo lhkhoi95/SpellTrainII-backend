@@ -1,3 +1,5 @@
+# DEPRECATED: This file is no longer used. It is kept for reference purposes only.
+
 from typing import List
 import json
 from api.schemas.schemas import EvaluatedTopic, WordInfo

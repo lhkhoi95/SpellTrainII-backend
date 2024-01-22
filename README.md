@@ -12,12 +12,12 @@ Open a web browser and visit:
 - http://127.0.0.1:8000/docs
 - Swagger UI will provide a user-friendly interface for testing API endpoints
 
-# Create environment variable
+# Create environment variables
 
 - In the backend directory, create a .env file and insert these variables:
-`OPENAI_API_KEY=sk-xxxx` (from OpenAI)
-`GOOGLE_GEMINI_API_KEY=xxxx` (from Google Gemini API)
-`SPELLTRAIN2_DATABASE_URL=sqlite:///./api/spelltrain2.db`
+- `OPENAI_API_KEY=sk-xxxx` (from OpenAI)
+- `GOOGLE_GEMINI_API_KEY=xxxx` (from Google Gemini API)
+- `SPELLTRAIN2_DATABASE_URL=sqlite:///./api/spelltrain2.db`
 
 # API Testing
 

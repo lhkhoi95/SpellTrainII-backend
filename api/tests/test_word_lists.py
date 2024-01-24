@@ -8,6 +8,7 @@ client = TestClient(app)
 
 user_id = -999
 word_list = {}
+word_list_2 = {}
 
 
 def test_create_a_user():
@@ -67,13 +68,6 @@ def test_get_word_list_by_id():
     assert response.status_code == 200
 
 
-def test_create_generative_word_list_new_topic():
-    # Test creating a generative word list for a new topic
-    response = client.get(f"/word-lists/?topic={TOPIC2}")
-    assert response.status_code == 200
-    assert response.json() != {"detail": "Word list not found"}
-
-
 def test_create_generative_word_list_no_topic():
     # Test creating a generative word list without providing a topic
     response = client.get("/word-lists/")
@@ -105,7 +99,7 @@ def test_get_word_info():
     for word_id in INVALID_INT_IDS:
         response = client.get(f"/word-lists/words/{word_id}")
         assert response.status_code == 404
-        assert response.json() == {"detail": "Word not found"}
+        assert response.json() == {"detail": f"Word ID {word_id} not found"}
 
     # Select 5 random words from the word list to test
     words = word_list.get("words")
@@ -148,14 +142,28 @@ def test_update_words():
 
 def test_update_invalid_words():
     # Test updating invalid words
+    word_id = INVALID_WORD[0].get("id")
     response = client.patch("/word-lists/words", json=INVALID_WORD)
     assert response.status_code == 404
-    assert response.json() == {"detail": "Word not found"}
+    assert response.json() == {"detail": f"Word ID {word_id} not found"}
 
     response = client.patch("/word-lists/words", json=INVALID_WORD_LIST_ID)
     assert response.status_code == 400
     assert response.json() == {
         "detail": "Word does not belong to the word list"}
+
+
+def test_delete_words_invalid_word_id():
+    # Test deleting words with invalid word ID
+    word_ids_to_delete = INVALID_IDS
+
+    response = client.delete(
+        "/word-lists/words/",
+        params={"word_ids": word_ids_to_delete}
+    )
+
+    assert response.status_code == 422
+    assert response.json().get("detail")[0].get("type") == "int_parsing"
 
 
 def test_delete_words():
@@ -171,22 +179,8 @@ def test_delete_words():
         "/word-lists/words/",
         params={"word_ids": word_ids_to_delete}
     )
-
     assert response.status_code == 200
     assert len(response.json()) == len(word_ids_to_delete)
-
-
-def test_delete_words_invalid_word_id():
-    # Test deleting words with invalid word ID
-    word_ids_to_delete = INVALID_IDS
-
-    response = client.delete(
-        "/word-lists/words/",
-        params={"word_ids": word_ids_to_delete}
-    )
-
-    assert response.status_code == 422
-    assert response.json().get("detail")[0].get("type") == "int_parsing"
 
 
 def test_update_invalid_word_list():
@@ -231,6 +225,74 @@ def test_delete_word_list():
 
     assert response.status_code == 200
     assert response.json().get("id") == word_list_id
+
+
+def test_create_generative_word_list_2():
+    global word_list_2
+    # Test creating a generative word list for a new topic
+    response = client.get(f"/word-lists/?topic={TOPIC2}")
+    word_list_2 = response.json()
+    assert response.status_code == 200
+    assert response.json() != {"detail": "Word list not found"}
+
+
+def test_delete_words_from_word_list_2():
+    global word_list_2
+
+    words = word_list_2.get("words")
+    assert len(words) > 0
+
+    word_ids_to_delete = [word.get("id") for word in words]
+
+    response = client.delete(
+        "/word-lists/words/",
+        params={"word_ids": word_ids_to_delete}
+    )
+    assert response.status_code == 200
+    assert len(response.json()) == len(word_ids_to_delete)
+
+
+def test_add_invalid_words_to_word_list_2():
+    # Test adding a word
+    global word_list_2
+    word_list_id = word_list_2.get("id")
+    assert word_list_id is not None
+    # Topic: Technology
+    for invalid_word in IRRELEVANT_WORDS:
+        word = {"word": str(invalid_word), "wordListId": word_list_id}
+        response = client.post("/word-lists/words", json=word)
+        assert response.status_code == 400
+        assert response.json().get("detail") == "This is not a valid word."
+
+    # Test adding a word with an invalid word list ID
+    for invalid_word_list_id in INVALID_INT_IDS:
+        word = {"word": "test", "wordListId": invalid_word_list_id}
+        response = client.post("/word-lists/words", json=word)
+        assert response.status_code == 404
+        assert response.json().get("detail") == "Word list not found"
+
+
+def test_add_words_to_word_list_2():
+    # Test adding a word
+    global word_list_2
+    word_list_id = word_list_2.get("id")
+    assert word_list_id is not None
+
+    # Test adding a valid word related to the topic Science
+    for tech_word in TECH_WORDS:
+        word = {"word": tech_word, "wordListId": word_list_id}
+        response = client.post("/word-lists/words", json=word)
+        assert response.status_code == 200
+        # Check if the word was added to the word list
+        new_word_list = response.json()
+        assert word.get("word") in [word.get("word") for word in new_word_list]
+
+    # Test adding a repeated word
+    for tech_word in TECH_WORDS_WITH_SPACES:
+        word = {"word": tech_word, "wordListId": word_list_id}
+        response = client.post("/word-lists/words", json=word)
+        assert response.status_code == 400
+        assert response.json().get("detail") == "This word already exists in the word list."
 
 
 def test_delete_a_user():

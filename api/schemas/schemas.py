@@ -18,6 +18,14 @@ class Word(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class WordCreate(BaseModel):
+    word: str
+    wordListId: int
+
+    # This allows us to convert any kind of objects to Pydantic models
+    model_config = ConfigDict(from_attributes=True)
+
+
 class WordInfo(BaseModel):
     definition: str
     rootOrigin: str
@@ -84,8 +92,11 @@ class UserResponse(UserBase):
     isActive: bool
 
 
-class EvaluatedTopic(BaseModel):
+class EvaluatedInput(BaseModel):
     isValid: bool
+
+
+class EvaluatedTopic(EvaluatedInput):
     reason: str
 
     # This allows us to convert any kind of objects to Pydantic models

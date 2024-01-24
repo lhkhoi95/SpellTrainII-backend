@@ -5,7 +5,7 @@ from typing import List, Optional
 from devtools import pprint
 from fastapi import HTTPException
 from openai import OpenAI, OpenAIError
-from api.schemas.schemas import EvaluatedTopic, WordInfo
+from api.schemas.schemas import EvaluatedInput, EvaluatedTopic, WordInfo
 
 
 class SpellTrain2AI:
@@ -73,6 +73,23 @@ class SpellTrain2AI:
 
         # Convert to EvaluatedTopic type and return
         return EvaluatedTopic.model_validate(json_response)
+
+    def evaluate_word_topic(self, word: str, topic: str) -> EvaluatedInput:
+        client = self._google_gemini_client()
+        prompt = 'Is the word "{}" related to the topic "{}"? The JSON response should be in the following format: {{"isValid": "True"}} or {{"isValid": "False"}}.'.format(
+            word, topic)
+
+        try:
+            response = client.generate_content(
+                prompt, generation_config={"temperature": 0})
+            # extract text from "{" to "}"
+            json_response = json.loads(response.text[response.text.find(
+                "{"):response.text.find("}")+1])
+
+            return EvaluatedInput.model_validate(json_response)
+        except Exception as e:
+            print(e)
+            print(response.prompt_feedback)
 
     def get_word_list(self, topic: str, existing_words: Optional[List] = None, model: Optional[str] = 'gpt-3.5-turbo-1106') -> list[str]:
         """
@@ -223,15 +240,12 @@ class SpellTrain2AI:
             Exception: If an error occurs during the retrieval process.
         """
         client = self._google_gemini_client(model=default_model)
-        config = {
-            "temperature": 0
-        }
         prompt = f'The word "{word}" is related to the topic "{topic}". Provide information about this word: "{word}". The JSON response should be in the following format: {{"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "root of origin", "usage": "usage of the word in a short sentence", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word."}}'
 
         for i in range(self._RETRY_COUNT):
             try:
                 response = client.generate_content(
-                    prompt, generation_config=config)
+                    prompt, generation_config={"temperature": 0})
 
                 # Extract JSON response starting from the first '{' to the last '}'
                 json_text = response.text[response.text.find(

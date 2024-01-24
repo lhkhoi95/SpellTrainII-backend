@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from api.utils.SpellTrainII_AI import SpellTrain2AI
@@ -113,7 +114,6 @@ def get_word_info(db: Session, word_id: int):
     db_word = get_word_by_id(db, word_id)
     db_word_list = get_word_list_by_id(db, db_word.wordListId)
     topic = db_word_list.title
-
     word_info = spelltrain2AI.get_word_details(db_word.word, topic)
 
     db_word.definition = word_info.definition
@@ -129,23 +129,49 @@ def get_word_info(db: Session, word_id: int):
     return db_word
 
 
-def update_word(db: Session, word: schemas.Word) -> schemas.Word:
-    db_word = get_word_by_id(db, word.id)
+def add_a_word(db: Session, word: schemas.WordCreate):
+    try:
+        word_to_add = word_dict(word.word)
+        db_word = models.Word(**word_to_add, wordListId=word.wordListId)
+        db.add(db_word)
+        db.flush()
+        db.commit()
+        db.refresh(db_word)
 
-    if db_word is None:
-        raise HTTPException(status_code=404, detail="Word not found")
+        # Get the words in the word list
+        db_word_list = get_word_list_by_id(db, word.wordListId)
 
-    db_word.word = word.word
-    db_word.definition = word.definition
-    db_word.rootOrigin = word.rootOrigin
-    db_word.usage = word.usage
-    db_word.languageOrigin = word.languageOrigin
-    db_word.partsOfSpeech = word.partsOfSpeech
-    db_word.alternatePronunciation = word.alternatePronunciation
-    db.commit()
-    db.refresh(db_word)
+        return db_word_list.words
+    except Exception as e:
+        db.rollback()
+        raise e
 
-    return schemas.Word.model_validate(db_word)
+
+def update_words(db: Session, words_to_update: List[schemas.Word]) -> List[schemas.Word]:
+    updated_words = []
+    try:
+        for word in words_to_update:
+            db_word = get_word_by_id(db, word.id)
+
+            if db_word is None:
+                raise HTTPException(
+                    status_code=404, detail=f"Word ID {word.id} not found")
+
+            db_word.word = word.word
+            db_word.definition = word.definition
+            db_word.rootOrigin = word.rootOrigin
+            db_word.usage = word.usage
+            db_word.languageOrigin = word.languageOrigin
+            db_word.partsOfSpeech = word.partsOfSpeech
+            db_word.alternatePronunciation = word.alternatePronunciation
+            db.commit()
+            db.refresh(db_word)
+            updated_words.append(schemas.Word.model_validate(db_word))
+
+        return updated_words
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def delete_words(db: Session, word_ids: List[int]):
@@ -155,7 +181,9 @@ def delete_words(db: Session, word_ids: List[int]):
         for word_id in word_ids:
             db_word = get_word_by_id(db, word_id)
             if db_word is None:
-                raise HTTPException(status_code=404, detail="Word not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Word ID {word_id} not found")
+
             db.delete(db_word)
             db.flush()
             deleted_words.append(db_word)

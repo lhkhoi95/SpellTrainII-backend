@@ -24,6 +24,20 @@ UPDATED_TEST_USER = {
 
 TOPIC1 = "Science"
 TOPIC2 = "Technology"
+
+TECH_WORDS = [
+    "Hardware",
+    "Software",
+    "Computer",
+    "Machine Learning",
+]
+
+TECH_WORDS_WITH_SPACES = [
+    "Machine Learning      ",
+    "Machine        Learning",
+    "      Machine Learning",
+]
+
 INVALID_TOPICS = [
     "Unknown",
     "Killing",
@@ -68,4 +82,8 @@ INVALID_WORD_LISTS_TO_UPDATE = [
         "id": 999,
         "title": "Test update title"
     }
+]
+
+IRRELEVANT_WORDS = [
+    "Tree", "Book", "Flower", "Sunset", "Rainbow", "123", "abc", "xyz", "abc123", "123abc", "abcxyz", "xyzabc", 123, 999, -999
 ]

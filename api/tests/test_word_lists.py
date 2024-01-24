@@ -40,6 +40,15 @@ def test_create_generative_word_list():
     word_list = response1.json()
     assert word_list != {}
     assert response1.status_code == 200
+    # Each field should be empty except for the word field
+    for word in word_list.get("words"):
+        assert word.get("word") != ""
+        assert word.get("definition") == ""
+        assert word.get("rootOrigin") == ""
+        assert word.get("usage") == ""
+        assert word.get("languageOrigin") == ""
+        assert word.get("partsOfSpeech") == ""
+        assert word.get("alternatePronunciation") == ""
     assert response1.json() != {"detail": "Word list not found"}
 
     # Test getting a word list by the same topic (should be faster)

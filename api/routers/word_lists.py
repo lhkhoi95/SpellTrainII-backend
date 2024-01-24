@@ -187,7 +187,7 @@ async def add_a_word(word: WordCreate, db: Session = Depends(get_db)):
     """
     db_word_list = crud.get_word_list_by_id(db, word_list_id=word.wordListId)
 
-    sanitized_word = re.sub('\s+', ' ', word.word).strip()
+    sanitized_word = re.sub(r'\s+', ' ', word.word).strip()
 
     # Check if word list exists
     if db_word_list is None:

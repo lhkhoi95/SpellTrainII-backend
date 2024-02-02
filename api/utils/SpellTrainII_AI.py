@@ -104,13 +104,13 @@ class SpellTrain2AI:
             list[str]: A list of spelling bee words related to the topic.
         """
         client = self._openai_client()
-        user_prompt = f'Provide {self._NUMB_OF_WORDS} spelling bee words in English related to the topic: {topic}.'
+        user_prompt = f'Provide {self._NUMB_OF_WORDS} spelling bee words in English without dialect/accent related to the topic: {topic}.'
 
         messages = [
             {'role': 'system', 'content': 'You are a helpful dictionary. You are asked to provide a list of words on a topic.'},
             {'role': 'system',
                 'content': 'The JSON response should be in the following format: {"words": ["word1", "word2", "word3"]}'},
-            {'role': 'system', 'content': 'All the key-value pairs cannot be empty.'},
+            {'role': 'system', 'content': 'All the key-value pairs cannot be empty and the list of words should not contain any duplicates.'},
             {'role': 'user', 'content': user_prompt},
         ]
 
@@ -129,7 +129,10 @@ class SpellTrain2AI:
         json_response = json.loads(completion.choices[0].message.content)
 
         word_list = list(json_response['words'])
-        # Remove duplicates
+        # Remove duplicates from the word_list
+        word_list = list(dict.fromkeys(word_list))
+
+        # Remove existing words
         if existing_words is not None:
             word_list = [
                 word for word in word_list if word not in existing_words]
@@ -170,7 +173,9 @@ class SpellTrain2AI:
                 undesired_results = self._validate_word_info(word_details)
 
                 if len(undesired_results) == 0:
-                    print('Word: ', word)
+                    print('Word: ', word.encode('utf-8'))
+                    word_details.alternatePronunciation = word_details.alternatePronunciation.encode(
+                        "utf-8")
                     pprint(word_details)
                     print(f"{model_name} succeeded.")
                     return word_details
@@ -240,7 +245,7 @@ class SpellTrain2AI:
             Exception: If an error occurs during the retrieval process.
         """
         client = self._google_gemini_client(model=default_model)
-        prompt = f'The word "{word}" is related to the topic "{topic}". Provide information about this word: "{word}". The JSON response should be in the following format: {{"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "root of origin", "usage": "usage of the word in a short sentence", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word."}}'
+        prompt = f'The word "{word}" is related to the topic "{topic}". Provide information about this word: "{word}". The JSON response should be in the following format: {{"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "usage of the word in a short sentence", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word."}}'
 
         for i in range(self._RETRY_COUNT):
             try:
@@ -292,7 +297,7 @@ class SpellTrain2AI:
         messages = [
             {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output JSON.'},
             {'role': 'system',
-                'content': 'The JSON response should be in the following format: {"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "root of origin", "usage": "usage of the word in a short sentence", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word.}'},
+                'content': 'The JSON response should be in the following format: {"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "usage of the word in a short sentence", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word.}'},
             {'role': 'system', 'content': 'If you have no result for a key-value pairs, leave it as "Unknown"'},
             {'role': 'user', 'content': user_prompt},
         ]

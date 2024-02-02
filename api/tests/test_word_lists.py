@@ -29,6 +29,9 @@ def test_create_generative_word_list_invalid_topic():
         assert response.status_code == 400
         if response.status_code == 200:
             assert len(response.json().get("words")) > 0
+            # Check for non-duplicate words
+            assert len(response.json().get("words")) == len(
+                set(response.json().get("words")))
         if response.status_code == 400:
             assert response.json().get("detail") is not None
 
@@ -284,7 +287,7 @@ def test_add_words_to_word_list_2():
         response = client.post("/word-lists/words", json=word)
         assert response.status_code == 200
         # Check if the word was added to the word list
-        new_word_list = response.json()
+        new_word_list = response.json().get("words")
         assert word.get("word") in [word.get("word") for word in new_word_list]
 
     # Test adding a repeated word

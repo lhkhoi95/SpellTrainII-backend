@@ -7,6 +7,7 @@ from api.utils.SpellTrainII_AI import SpellTrain2AI
 from api.models import models
 from api.schemas import schemas
 from api.utils.helpers import word_dict
+from thefuzz import fuzz
 
 
 def get_word_by_id(db: Session, word_id: int):
@@ -22,8 +23,12 @@ def get_word_lists_by_uid(db: Session, uid: int):
 
 
 def get_word_list_by_title(db: Session, title: str):
-    search_title = f"%{title}%"
-    return db.query(models.WordList).filter(models.WordList.title.like(search_title)).first()
+    word_lists = db.query(models.WordList).all()
+    for word_list in word_lists:
+        similarity = fuzz.ratio(title.lower(), word_list.title.lower())
+        if similarity >= 70:
+            return word_list
+    return None
 
 
 def create_generative_word_list(db: Session, topic: str, user_id: int):
@@ -129,7 +134,7 @@ def get_word_info(db: Session, word_id: int):
     return db_word
 
 
-def add_a_word(db: Session, word: schemas.WordCreate):
+def add_a_word(db: Session, word: schemas.WordList):
     try:
         word_to_add = word_dict(word.word)
         db_word = models.Word(**word_to_add, wordListId=word.wordListId)
@@ -141,7 +146,7 @@ def add_a_word(db: Session, word: schemas.WordCreate):
         # Get the words in the word list
         db_word_list = get_word_list_by_id(db, word.wordListId)
 
-        return db_word_list.words
+        return db_word_list
     except Exception as e:
         db.rollback()
         raise e

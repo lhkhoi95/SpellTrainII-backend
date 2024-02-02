@@ -29,23 +29,24 @@ async def create_generative_word_list(topic: str, db: Session = Depends(get_db))
     - HTTPException: If the topic is invalid.
     """
     user_id = 1  # TODO: get user id from auth token. This route requires user login
+    sanitized_topic = re.sub(r'\s+', ' ', topic).strip().capitalize()
     spelltrain2AI = SpellTrain2AI()
 
     # Validate topic
-    evaluated_topic = spelltrain2AI.evaluate_topic(topic)
+    evaluated_topic = spelltrain2AI.evaluate_topic(sanitized_topic)
     # If topic is invalid, raise an exception with the reason
     if not evaluated_topic.isValid:
         raise HTTPException(
             status_code=400, detail=evaluated_topic.reason)
 
     # Check if title already exists
-    db_word_list = crud.get_word_list_by_title(db=db, title=topic)
+    db_word_list = crud.get_word_list_by_title(db=db, title=sanitized_topic)
 
     # If title exists, return the list
     if db_word_list:
         return db_word_list
 
-    return crud.create_generative_word_list(db=db, topic=topic, user_id=user_id)
+    return crud.create_generative_word_list(db=db, topic=sanitized_topic, user_id=user_id)
 
 
 @router.patch("/", response_model=WordList)
@@ -170,7 +171,7 @@ async def get_more_words(word_list_id: int, db: Session = Depends(get_db)):
     return crud.get_more_words(db=db, word_list_id=word_list_id)
 
 
-@router.post("/words", response_model=List[Word])
+@router.post("/words", response_model=WordList)
 async def add_a_word(word: WordCreate, db: Session = Depends(get_db)):
     """
     Add a word to a word list.
@@ -183,7 +184,7 @@ async def add_a_word(word: WordCreate, db: Session = Depends(get_db)):
         HTTPException: If the word list is not found, the word is repetitive, or the word is not valid.
 
     Returns:
-        List[Word]: The new list of words.
+        WordList: The new list of words.
     """
     db_word_list = crud.get_word_list_by_id(db, word_list_id=word.wordListId)
 

@@ -58,3 +58,4 @@ tqdm==4.66.1
 typing_extensions==4.9.0
 urllib3==2.1.0
 uvicorn==0.26.0
+thefuzz==0.22.1

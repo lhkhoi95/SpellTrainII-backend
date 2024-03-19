@@ -1,3 +1,13 @@
+# Create environment variables
+
+- In the backend directory, create a .env file and insert these variables:
+- `OPENAI_API_KEY=sk-xxxx` ([from OpenAI](https://platform.openai.com/api-keys))
+- `GOOGLE_GEMINI_API_KEY=xxxx` ([from Google Gemini API](https://aistudio.google.com/app/apikey))
+- `SPELLTRAIN2_DATABASE_URL=sqlite:///./api/spelltrain2.db`
+- `SECRET_KEY=please-change-this-to-your-secret-key`
+- `ALGORITHM=HS256`
+- `ACCESS_TOKEN_EXPIRE_MINUTES=43200`
+
 # Install required libraries
 
 In the backend directory, run `pip install -r requirements.txt` to install required libraries.
@@ -6,22 +16,9 @@ In the backend directory, run `pip install -r requirements.txt` to install requi
 
 In the backend directory, run `uvicorn api.main:app --reload`
 
-# Accessing Swagger UI:
+# Accessing Swagger UI
 
-Open a web browser and visit:
-
-- http://127.0.0.1:8000/docs
-- Swagger UI will provide a user-friendly interface for testing API endpoints
-
-# Create environment variables
-
-- In the backend directory, create a .env file and insert these variables:
-- `OPENAI_API_KEY=sk-xxxx` (from OpenAI)
-- `GOOGLE_GEMINI_API_KEY=xxxx` (from Google Gemini API)
-- `SPELLTRAIN2_DATABASE_URL=sqlite:///./api/spelltrain2.db`
-- `SECRET_KEY=please-change-this-to-your-secret-key`
-- `ALGORITHM=HS256`
-- `ACCESS_TOKEN_EXPIRE_MINUTES=43200`
+The API endpoints UI should be accessible via [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
 # API Testing
 
@@ -32,7 +29,7 @@ In the backend directory, run `pytest` to test the api endpoints
 - `pytest -v` will print more descriptive information
 - `pytest -s` will show all print statements in the program
 
-# Sending HTTP Requests (Axios Example):
+# Sending HTTP Requests (React Native):
 
 - await axios.get(`http://{your_ip}:8000/`).then((res) => {console.log(res.data);});
 
@@ -46,13 +43,15 @@ In the backend directory, run `pytest` to test the api endpoints
 
 For example, await axios.get(`http://192.168.1.5:8000/`).then((res) => {console.log(res.data);});
 
-# Run on Docker (If you already installed Docker)
+# Docker
+
+Download & Install Docker: https://www.docker.com/products/docker-desktop/
 
 In the backend directory, run these commands (feel free to replace `spelltrain2` by other name if you prefer):
 
-(Important): make sure to have the .env set up before running these commands (see instruction above).
+(Important): make sure to have the .env file set up before running these commands (see the first instruction above).
 
-- `docker build -t spelltrain2 .` (run this command only the first time)
+- `docker build -t spelltrain2 .`
 - `docker run -p 8000:8000 spelltrain2`
 
-  The API endpoints should be accessible via [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+  The API endpoints UI should be accessible via [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).

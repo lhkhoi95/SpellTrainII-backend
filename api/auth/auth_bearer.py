@@ -1,7 +1,7 @@
 import os
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
+from jose import jwt
 
 
 class RequiredLogin(HTTPBearer):
@@ -9,13 +9,15 @@ class RequiredLogin(HTTPBearer):
         super(RequiredLogin, self).__init__(auto_error=auto_error)
 
     async def __call__(self, request: Request):
-        jwt_from_header: HTTPAuthorizationCredentials = await super(RequiredLogin, self).__call__(request)
-
-        if jwt_from_header:
-            if not jwt_from_header.scheme == "Bearer":
+        headers: HTTPAuthorizationCredentials = await super(RequiredLogin, self).__call__(request)
+        if headers:
+            if not headers.scheme == "Bearer":
                 raise HTTPException(
                     status_code=403, detail="Invalid authentication scheme.")
-            payload = self.verify_jwt(jwt_from_header.credentials)
+            token = headers.credentials
+
+            payload = self.verify_jwt(token)
+
             if payload is None:
                 raise HTTPException(
                     status_code=403, detail="Invalid token or expired token.")
@@ -25,11 +27,12 @@ class RequiredLogin(HTTPBearer):
             raise HTTPException(
                 status_code=403, detail="Invalid authorization code.")
 
-    def verify_jwt(self, jwtoken: str):
+    def verify_jwt(self, jwt_token: str):
         try:
-            payload = jwt.decode(jwtoken, os.getenv("SECRET_KEY"),
+            payload = jwt.decode(token=jwt_token, key=os.getenv("SECRET_KEY"),
                                  algorithms=[os.getenv("ALGORITHM")])
-        except:
+        except Exception as e:
+            print(e)
             payload = None
-        # print(payload)
+
         return payload

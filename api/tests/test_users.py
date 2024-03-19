@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from api.main import app
 from api.tests.helpers import *
 
-client = TestClient(app)
+client = TestClient(app=app)
 
 # header to store jwt token for sub-sequence requests
 headers = {}

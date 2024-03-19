@@ -183,7 +183,6 @@ def test_create_generative_word_list_no_topic():
 def test_get_all_by_uid():
     # Test getting all word lists by user ID
     response = client.get("/word-lists/get-all", headers=headers_user_1)
-    print(response.json())
     assert response.status_code == 200
     # 2 custom word lists and 1 generative word list
     assert len(response.json()) == 3
@@ -206,7 +205,7 @@ def test_get_word_info():
     for word_id in INVALID_INT_IDS:
         response = client.get(
             f"/word-lists/words/{word_id}", headers=headers_user_1)
-        print(response.json())
+
         assert response.status_code == 404
         assert response.json() == {"detail": f"Word ID {word_id} not found"}
 
@@ -237,7 +236,7 @@ def test_get_word_info():
         assert response.json().get("word") == word.get("word")
 
 
-# def test_update_words():
+def test_update_words():
     words = word_list_user_1.get("words")
 
     # Update all words

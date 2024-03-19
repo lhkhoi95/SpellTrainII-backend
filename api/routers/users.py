@@ -51,7 +51,7 @@ async def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     access_token_expires = timedelta(minutes=int(
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")))
     access_token = create_access_token(
-        data={"sub": db_user.id}, expires_delta=access_token_expires
+        data={"sub": str(db_user.id)}, expires_delta=access_token_expires
     )
 
     return {

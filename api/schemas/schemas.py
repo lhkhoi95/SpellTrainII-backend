@@ -1,6 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, EmailStr
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class Word(BaseModel):
@@ -12,9 +11,23 @@ class Word(BaseModel):
     languageOrigin: Optional[str] = None
     partsOfSpeech: Optional[str] = None
     alternatePronunciation: Optional[str] = None
+    audioUrl: Optional[str] = None
     wordListId: int
 
     # This allows us to convert any kind of objects to Pydantic models
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CustomWord(BaseModel):
+    word: str = Field(..., max_length=50, min_length=1)
+    definition: str = Field(..., max_length=50)
+    rootOrigin: str = Field(..., max_length=50)
+    usage: str = Field(..., max_length=100)
+    languageOrigin: str = Field(..., max_length=50)
+    partsOfSpeech: str = Field(..., max_length=50)
+    alternatePronunciation: str = Field(..., max_length=50)
+    audioUrl: Optional[str] = ""
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -45,20 +58,39 @@ class WordList(BaseModel):
     words: List[Word] = []
 
 
+class CustomWordList(BaseModel):
+    title: str = Field(min_length=3)
+    words: List[CustomWord] = Field(max_length=30)
+
+
 class WordListUpdate(BaseModel):
     id: int
     title: str
 
 
 class UserBase(BaseModel):
-    name: str
+    name: str | None = None
     email: EmailStr
-    phone: str
-    wordLists: List[WordList] = []
+    phone: str | None = None
+    wordLists: List[WordList] | None = []
+    # This allows us to convert any kind of objects to Pydantic models
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(min_length=6)
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=6)
+
+
+class UserLoginResponse(UserBase):
+    accessToken: str
+
+    # This allows us to convert any kind of objects to Pydantic models
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserUpdate(BaseModel):

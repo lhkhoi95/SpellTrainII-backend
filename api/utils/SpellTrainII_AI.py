@@ -30,7 +30,7 @@ class SpellTrain2AI:
             usage="",
             languageOrigin="",
             partsOfSpeech="",
-            alternatePronunciation=""
+            alternatePronunciation="",
         )
 
     def evaluate_topic(self, topic: str) -> EvaluatedTopic:
@@ -54,7 +54,7 @@ class SpellTrain2AI:
             {'role': 'system', 'content': 'A valid spelling bee topic encompasses a clear category or subject area with enough scope and depth to generate an appropriate word list, but avoids overly niche or sensitive subjects.'},
             {'role': 'system',
                 'content': 'The JSON response should be in the following format: {"isValid": true, "reason": "why is a suitable spelling bee topic"} or {"isValid": false, "reason": "why is not a suitable spelling bee topic"}'},
-            {'role': 'system', 'content': 'The reason should be within 10 words.'},
+            {'role': 'system', 'content': 'The reason should be brief and clear.'},
             {'role': 'user', 'content': user_prompt},
         ]
         try:
@@ -76,7 +76,7 @@ class SpellTrain2AI:
 
     def evaluate_word_topic(self, word: str, topic: str) -> EvaluatedInput:
         client = self._google_gemini_client()
-        prompt = 'Is the word "{}" related to the topic "{}"? The JSON response should be in the following format: {{"isValid": "True"}} or {{"isValid": "False"}}.'.format(
+        prompt = 'Is the word "{}" related to the topic "{}" and spelled correctly? The JSON response should be in the following format: {{"isValid": "True"}} or {{"isValid": "False"}}.'.format(
             word, topic)
 
         try:
@@ -111,6 +111,8 @@ class SpellTrain2AI:
             {'role': 'system',
                 'content': 'The JSON response should be in the following format: {"words": ["word1", "word2", "word3"]}'},
             {'role': 'system', 'content': 'All the key-value pairs cannot be empty and the list of words should not contain any duplicates.'},
+            {'role': 'system', 'content': 'All words should be single words and not phrases.'},
+            {'role': 'system', 'content': 'Order of the words in level of difficulty is important.'},
             {'role': 'user', 'content': user_prompt},
         ]
 

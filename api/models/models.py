@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, declarative_base
-import uuid
 
 Base = declarative_base()
 
@@ -45,6 +44,7 @@ class Word(Base):
     languageOrigin = Column(String)
     partsOfSpeech = Column(String)
     alternatePronunciation = Column(String)
+    audioUrl = Column(String)
 
     wordListId = Column(
         Integer,

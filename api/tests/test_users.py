@@ -1,53 +1,59 @@
 from fastapi.testclient import TestClient
 from api.main import app
-from api.tests.helpers import USER_EMAIL, TEST_USER, UPDATED_TEST_USER
+from api.tests.helpers import *
 
 client = TestClient(app)
 
-# Create a test user
-user_id = -999
+# header to store jwt token for sub-sequence requests
+headers = {}
 
 
 def test_create_user():
-    global user_id
     # Test creating the user
-    response = client.post("/users/", json=TEST_USER.model_dump())
-    user_id = response.json().get("id")
+    response = client.post("/users/", json=TEST_USER)
     assert response.status_code == 200
     assert response.json().get("email") == USER_EMAIL
-    assert user_id != -999
 
-
-def test_create_duplicate_user():
     # Test creating a duplicate user
-    response = client.post("/users/", json=TEST_USER.model_dump())
+    response = client.post("/users/", json=TEST_USER)
     assert response.status_code == 400
     assert response.json() == {"detail": "Email already registered"}
 
 
+def test_login():
+    global headers
+    response = client.post(
+        "/users/login", json={"email": TEST_USER["email"], "password": TEST_USER["password"]})
+    accessToken = response.json().get("accessToken")
+    headers = {"Authorization": f"Bearer {accessToken}"}
+    assert response.status_code == 200
+    assert response.json().get("email") == USER_EMAIL
+    assert headers != {}
+
+
 def test_get_user():
-    global user_id
-    # Test retrieving a non-existent user
-    response = client.get("/users/-999")
-    assert response.status_code == 404
-    assert response.json() == {"detail": "User not found"}
+    # Without access token
+    response = client.get("/users/")
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Not authenticated"}
 
-    # Test retrieving the user by ID
-    response = client.get(f"/users/{user_id}")
-    assert response.status_code == 200
-    assert response.json() != {"detail": "User not found"}
+    # Using incorrect token
+    fakeToken = "xasbcyuihwgbui2390jcdsm"
+    response = client.get(
+        f"/users/", headers={"Authorization": f"Bearer {fakeToken}"})
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Invalid token or expired token."}
 
-    # Test retrieving the user by email
-    response = client.get(f"/users/email/{USER_EMAIL}")
+    # Using correct token
+    response = client.get(f"/users/", headers=headers)
     assert response.status_code == 200
-    assert response.json() != {"detail": "User not found"}
+    assert response.json() == TEST_USER_RESPONSE
 
 
 def test_update_user():
-    global user_id
     # Test updating all fields
     response = client.put("/users",
-                          json=UPDATED_TEST_USER)
+                          json=UPDATED_TEST_USER, headers=headers)
     assert response.status_code == 200
     assert response.json().get("email") == UPDATED_TEST_USER['email']
     assert response.json().get("isActive") == UPDATED_TEST_USER['isActive']
@@ -55,48 +61,25 @@ def test_update_user():
     assert response.json().get("phone") == UPDATED_TEST_USER['phone']
 
     # Test updating the email
-    response = client.put("/users", json={"email": USER_EMAIL})
+    response = client.put(
+        "/users", json={"email": USER_EMAIL}, headers=headers)
     assert response.status_code == 200
     assert response.json().get("email") == USER_EMAIL
 
     # Test updating the active status to False
-    response = client.put("/users", json={"isActive": False})
+    response = client.put(
+        "/users", json={"isActive": False}, headers=headers)
     assert response.status_code == 200
     assert response.json().get("isActive") == False
 
     # Test updating the active status to True
-    response = client.put("/users", json={"isActive": True})
+    response = client.put(
+        "/users", json={"isActive": True}, headers=headers)
     assert response.status_code == 200
     assert response.json().get("isActive") == True
 
 
-def test_delete_user_with_invalid_email():
-    # Invalid email
-    response = client.delete("/users/?user_email=-999")
-    assert response.status_code == 422
-    assert response.json().get("detail")[0].get("type") == "value_error"
-
-
-def test_delete_user_with_email():
-    # Test deleting a user by email
-    response = client.delete(f"/users/?user_email={USER_EMAIL}")
+def test_delete_user():
+    response = client.delete("/users/", headers=headers)
     assert response.status_code == 200
-    assert response.json() != {"detail": "User not found"}
-
-
-def test_delete_user_with_no_id_or_email():
-    # Test deleting a user with no ID or email
-    response = client.delete("/users/")
-    assert response.status_code == 400
-    assert response.json() == {
-        "detail": "Either user_id or user_email must be provided"}
-
-
-def test_delete_user_with_id():
-    # Test deleting a user by ID
-    test_create_user()
-    global user_id
-    # Test deleting a user by ID
-    response = client.delete(f"/users/?user_id={user_id}")
-    assert response.status_code == 200
-    assert response.json() != {"detail": "User not found"}
+    assert response.json() == UPDATED_TEST_USER_RESPONSE

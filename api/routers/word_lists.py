@@ -1,10 +1,11 @@
 import re
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Annotated, List
+from api.auth.auth_bearer import RequiredLogin
 from api.crud import word_lists as crud
 from api.dependencies import get_db
-from api.schemas.schemas import WordCreate, WordList, Word, WordListUpdate
+from api.schemas.schemas import CustomWordList, WordCreate, WordList, Word, WordListUpdate
 from api.utils.SpellTrainII_AI import SpellTrain2AI
 
 router = APIRouter(
@@ -14,64 +15,67 @@ router = APIRouter(
 
 
 @router.get("/", response_model=WordList)
-async def create_generative_word_list(topic: str, db: Session = Depends(get_db)):
-    """
-    Create a generative word list for the given topic.
-
-    Parameters:
-    - topic (str): The topic for which the word list is to be created.
-    - db (Session): The database session.
-
-    Returns:
-    - WordList: The created generative word list.
-
-    Raises:
-    - HTTPException: If the topic is invalid.
-    """
-    user_id = 1  # TODO: get user id from auth token. This route requires user login
-    sanitized_topic = re.sub(r'\s+', ' ', topic).strip().capitalize()
+async def create_generative_word_list(topic: Annotated[str, Query(min_length=3)], db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+    sanitized_topic = re.sub(r'\s+', ' ', topic).strip().title()
     spelltrain2AI = SpellTrain2AI()
 
-    # Validate topic
-    evaluated_topic = spelltrain2AI.evaluate_topic(sanitized_topic)
     # If topic is invalid, raise an exception with the reason
+    evaluated_topic = spelltrain2AI.evaluate_topic(sanitized_topic)
     if not evaluated_topic.isValid:
         raise HTTPException(
             status_code=400, detail=evaluated_topic.reason)
 
-    # Check if title already exists
-    db_word_list = crud.get_word_list_by_title(db=db, title=sanitized_topic)
+    # Check for repeated word list.
+    word_list_exists = crud.get_user_word_list_by_title(
+        db=db, title=sanitized_topic, uid=user_id)
+    if word_list_exists:
+        return word_list_exists
 
-    # If title exists, return the list
-    if db_word_list:
-        return db_word_list
-
+    # Ask AI models to generate one.
     return crud.create_generative_word_list(db=db, topic=sanitized_topic, user_id=user_id)
 
 
+@router.put("/", response_model=WordList)
+async def create_custom_word_list(custom_word_list: CustomWordList, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+    sanitized_topic = re.sub(
+        r'\s+', ' ', custom_word_list.title).strip().title()
+    words = custom_word_list.words
+
+    spelltrain2AI = SpellTrain2AI()
+
+    # If topic is invalid, raise an exception with the reason
+    evaluated_topic = spelltrain2AI.evaluate_topic(sanitized_topic)
+    if not evaluated_topic.isValid:
+        raise HTTPException(
+            status_code=400, detail=evaluated_topic.reason)
+
+    # If words are not empty, validate each word
+    if words:
+        for word in words:
+            result = spelltrain2AI.evaluate_word_topic(
+                word=word.word, topic=sanitized_topic)
+            if not result.isValid:
+                raise HTTPException(
+                    status_code=400, detail=f"Word '{word.word}' is not valid.")
+
+    # If word list exists, try to add words to the existing one but ignore duplicate words.
+    word_list_exists = crud.get_user_word_list_by_title(
+        db=db, title=sanitized_topic, uid=user_id)
+    if word_list_exists:
+        return crud.update_custom_word_list(db=db, word_list_id=word_list_exists.id, word_objs=words)
+
+    # Create a new word list
+    return crud.create_custom_word_list(db=db, topic=sanitized_topic, user_id=user_id, words=words)
+
+
 @router.patch("/", response_model=WordList)
-async def update_word_list(word_list: WordListUpdate, db: Session = Depends(get_db)):
-    """
-    Update a word list in the database.
-
-    Parameters:
-    - word_list: The updated WordList object.
-    - db: The database session.
-
-    Returns:
-    The updated WordList object.
-
-    Raises:
-    - HTTPException(404): If the word list is not found.
-    - HTTPException(400): If there is an error updating the word list.
-    """
+async def update_word_list_title(word_list: WordListUpdate, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     # Check if word_list_id exists
-    db_word_list = crud.get_word_list_by_id(db, word_list_id=word_list.id)
+    db_word_list = crud.get_word_list_by_id(
+        db, word_list_id=word_list.id, user_id=user_id)
 
     if db_word_list is None:
         raise HTTPException(status_code=404, detail="Word list not found")
-
-    # TODO: Check if word list belongs to user
 
     try:
         return crud.update_word_list(db=db, word_list=word_list)
@@ -82,26 +86,12 @@ async def update_word_list(word_list: WordListUpdate, db: Session = Depends(get_
 
 
 @router.delete("/", response_model=WordList)
-async def delete_word_list(word_list_id: int, db: Session = Depends(get_db)):
-    """
-    Delete a word list by its ID.
-
-    Parameters:
-    - word_list_id (int): The ID of the word list to be deleted.
-    - db (Session): The database session.
-
-    Returns:
-    - WordList: The deleted word list.
-
-    Raises:
-    - HTTPException: If the word list is not found or there is an error deleting it.
-    """
-    db_word_list = crud.get_word_list_by_id(db, word_list_id=word_list_id)
+async def delete_word_list(word_list_id: int, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+    db_word_list = crud.get_word_list_by_id(
+        db, word_list_id=word_list_id, user_id=user_id)
 
     if db_word_list is None:
         raise HTTPException(status_code=404, detail="Word list not found")
-
-    # TODO: Check if word list belongs to user
 
     try:
         return crud.delete_word_list(db=db, word_list_id=word_list_id)
@@ -112,59 +102,24 @@ async def delete_word_list(word_list_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/get-all", response_model=List[WordList])
-async def get_all_word_lists(db: Session = Depends(get_db)):
-    """
-    Retrieve all word lists associated with a user ID.
-
-    Parameters:
-    - db (Session): The database session.
-
-    Returns:
-    - List[WordList]: A list of WordList objects associated with the user ID.
-    """
-    # dummy user id
-    user_id = 1  # TODO: get user id from auth token. This route requires user login
+async def get_all_word_lists(db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     return crud.get_word_lists_by_uid(db=db, uid=user_id)
 
 
 @router.get("/{word_list_id}", response_model=WordList)
-async def get_word_list(word_list_id: int, db: Session = Depends(get_db)):
-    """
-    Retrieve a word list by its ID.
-
-    Args:
-        word_list_id (int): The ID of the word list to retrieve.
-        db (Session, optional): The database session. Defaults to Depends(get_db).
-
-    Returns:
-        WordList: The retrieved word list.
-
-    Raises:
-        HTTPException: If the word list is not found.
-    """
-    db_word_list = crud.get_word_list_by_id(db, word_list_id=word_list_id)
+async def get_word_list(word_list_id: int, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+    db_word_list = crud.get_word_list_by_id(
+        db, word_list_id=word_list_id, user_id=user_id)
     if db_word_list is None:
         raise HTTPException(status_code=404, detail="Word list not found")
     return db_word_list
 
 
 @router.get("/{word_list_id}/more", response_model=WordList)
-async def get_more_words(word_list_id: int, db: Session = Depends(get_db)):
-    """
-    Retrieve additional words from a word list.
-
-    Args:
-        word_list_id (int): The ID of the word list.
-        db (Session, optional): The database session. Defaults to Depends(get_db).
-
-    Returns:
-        WordList: The word list with additional words.
-
-    Raises:
-        HTTPException: If the word list with the given ID is not found.
-    """
+async def get_more_words(word_list_id: int, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     # Check if word_list_id exists
-    db_word_list = crud.get_word_list_by_id(db, word_list_id=word_list_id)
+    db_word_list = crud.get_word_list_by_id(
+        db, word_list_id=word_list_id, user_id=user_id)
     if db_word_list is None:
         raise HTTPException(status_code=404, detail="Word list not found")
 
@@ -172,21 +127,10 @@ async def get_more_words(word_list_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/words", response_model=WordList)
-async def add_a_word(word: WordCreate, db: Session = Depends(get_db)):
-    """
-    Add a word to a word list.
-
-    Args:
-        word (WordCreate): The word to be added.
-        db (Session, optional): The database session. Defaults to Depends(get_db).
-
-    Raises:
-        HTTPException: If the word list is not found, the word is repetitive, or the word is not valid.
-
-    Returns:
-        WordList: The new list of words.
-    """
-    db_word_list = crud.get_word_list_by_id(db, word_list_id=word.wordListId)
+async def add_a_word(word: WordCreate, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+    # Check if user has access to the word list
+    db_word_list = crud.get_word_list_by_id(
+        db, word_list_id=word.wordListId, user_id=user_id)
 
     sanitized_word = re.sub(r'\s+', ' ', word.word).strip()
 
@@ -217,33 +161,20 @@ async def add_a_word(word: WordCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/words", response_model=List[Word])
-async def update_words(words: List[Word], db: Session = Depends(get_db)):
-    """
-    Update multiple words in the database.
-
-    Args:
-        words (List[Word]): The list of words to update.
-        db (Session, optional): The database session. Defaults to Depends(get_db).
-
-    Raises:
-        HTTPException: If a word ID is not found or if a word does not belong to the word list.
-
-    Returns:
-        List[Word]: The updated list of words.
-    """
+async def update_words(words: List[Word], db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+    # Check if user has access to the word list
     for word in words:
+        db_word_list = crud.get_word_list_by_id(
+            db, word_list_id=word.wordListId, user_id=user_id)
+        if db_word_list is None:
+            raise HTTPException(
+                status_code=404, detail=f"Word list not found")
+
         # Check if word exists
         db_word = crud.get_word_by_id(db, word_id=word.id)
         if db_word is None:
             raise HTTPException(
                 status_code=404, detail=f"Word ID {word.id} not found")
-
-        # TODO: Check if word belongs to user
-
-        # Check if the word belongs to the word list
-        if db_word.wordListId != word.wordListId:
-            raise HTTPException(
-                status_code=400, detail="Word does not belong to the word list")
 
     try:
         return crud.update_words(db=db, words_to_update=words)
@@ -254,24 +185,19 @@ async def update_words(words: List[Word], db: Session = Depends(get_db)):
 
 
 @router.get("/words/{word_id}", response_model=Word)
-async def get_word_info(word_id: int, db: Session = Depends(get_db)):
-    """
-    Retrieve information about a word by its ID.
-
-    Args:
-        word_id (int): The ID of the word.
-        db (Session, optional): The database session. Defaults to Depends(get_db).
-
-    Returns:
-        Union[Word, Dict[str, Any]]: The word information if found, otherwise raises an HTTPException.
-
-    Raises:
-        HTTPException: If the word is not found or there is an error retrieving the word info.
-    """
+async def get_word_info(word_id: int, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     db_word = crud.get_word_by_id(db, word_id=word_id)
+
     if db_word is None:
         raise HTTPException(
             status_code=404, detail=f"Word ID {word_id} not found")
+
+    # Check if user has access to the word list
+    db_word_list = crud.get_word_list_by_id(
+        db, word_list_id=db_word.wordListId, user_id=user_id)
+
+    if db_word_list is None:
+        raise HTTPException(status_code=404, detail="Word list not found")
 
     # Check if definition, rootOrigin, usage, languageOrigin, partsOfSpeech, alternatePronunciation are empty
     if db_word.definition == '' or db_word.rootOrigin == '' or db_word.usage == '' or db_word.languageOrigin == '' or db_word.partsOfSpeech == '' or db_word.alternatePronunciation == '':
@@ -291,28 +217,22 @@ async def get_word_info(word_id: int, db: Session = Depends(get_db)):
 async def delete_words(
     word_ids: List[int] = Query(...,
                                 description="List of word IDs to delete", min_items=1),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id=Depends(RequiredLogin())
 ):
-    """
-    Delete multiple words from the database.
 
-    Args:
-        word_ids (List[int]): List of word IDs to delete.
-        db (Session): Database session.
+    for word_id in word_ids:
+        # Check if user has access to the word list
+        db_word = crud.get_word_by_id(db, word_id=word_id)
+        if db_word is None:
+            raise HTTPException(
+                status_code=404, detail=f"Word ID {word_id} not found")
 
-    Returns:
-        List[Word]: List of deleted words.
-
-    Raises:
-        HTTPException: If any of the word IDs are not found or there is an error deleting the word.
-    """
-    # Check if all word IDs exist
-    # for word_id in word_ids:
-    #     db_word = crud.get_word_by_id(db, word_id=word_id)
-    #     if db_word is None:
-    #         raise HTTPException(
-    #             status_code=404, detail=f"Word id {word_id} not found"
-    #         )
+        db_word_list = crud.get_word_list_by_id(
+            db, word_list_id=db_word.wordListId, user_id=user_id)
+        if db_word_list is None:
+            raise HTTPException(
+                status_code=404, detail=f"Word list not found")
 
     # If all word IDs exist, delete them
     try:

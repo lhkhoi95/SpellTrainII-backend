@@ -134,3 +134,7 @@ cython_debug/
 
 # Ignore database
 *.db
+
+# Ignore the audio folder
+audio/
+```

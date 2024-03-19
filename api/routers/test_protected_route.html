@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Login Test</title>
+</head>
+
+<body>
+    <h2>Login</h2>
+    <form id="login-form">
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email"><br>
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password"><br>
+        <input type="submit" value="Submit">
+    </form>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            var email = document.getElementById('email').value;
+            var password = document.getElementById('password').value;
+
+            fetch('http://localhost:8000/users/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password,
+                }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+
+                    // Test the /protected route
+                    fetch('http://localhost:8000/users/protected', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${data.accessToken}`,
+                        },
+                    })
+                        .then(response => response.json())
+                        .then(data => console.log(data))
+                        .catch((error) => {
+                            console.error('Error:', error);
+                        });
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        });
+    </script>
+</body>
+
+</html>

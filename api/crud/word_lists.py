@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from api.utils.SpellTrainII_AI import SpellTrain2AI
 from api.models import models
 from api.schemas import schemas
-from api.utils.helpers import word_dict
+from api.utils.helpers import delete_audio_file, get_audio_url, word_dict
 from thefuzz import fuzz
 
 
@@ -14,19 +14,32 @@ def get_word_by_id(db: Session, word_id: int):
     return db.query(models.Word).filter(models.Word.id == word_id).first()
 
 
-def get_word_list_by_id(db: Session, word_list_id: int):
-    return db.query(models.WordList).filter(models.WordList.id == word_list_id).first()
+def get_word_list_by_id(db: Session, word_list_id: int, user_id: int = None):
+    if user_id:
+        return db.query(models.WordList).filter(models.WordList.id == word_list_id, models.WordList.ownerId == user_id).first()
+    else:
+        return db.query(models.WordList).filter(models.WordList.id == word_list_id).first()
 
 
 def get_word_lists_by_uid(db: Session, uid: int):
     return db.query(models.WordList).filter(models.WordList.ownerId == uid).all()
 
 
+def get_user_word_list_by_title(db: Session, title: str, uid: int):
+    word_lists = db.query(models.WordList).filter(
+        models.WordList.ownerId == uid).all()
+    for word_list in word_lists:
+        similarity = fuzz.ratio(title.lower(), word_list.title.lower())
+        if similarity >= 80:
+            return word_list
+    return None
+
+
 def get_word_list_by_title(db: Session, title: str):
     word_lists = db.query(models.WordList).all()
     for word_list in word_lists:
         similarity = fuzz.ratio(title.lower(), word_list.title.lower())
-        if similarity >= 70:
+        if similarity >= 80:
             return word_list
     return None
 
@@ -46,9 +59,62 @@ def create_generative_word_list(db: Session, topic: str, user_id: int):
         for word in word_list:
             word_to_add = word_dict(word)
             db_word = models.Word(**word_to_add)
+            db_word.audioUrl = get_audio_url(db_word.word)
             db.add(db_word)
             db.flush()
             db_word_list.words.append(db_word)
+        db.commit()
+        db.refresh(db_word_list)
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Integrity Error")
+
+    return db_word_list
+
+
+def update_custom_word_list(db: Session, word_list_id: str, word_objs: List[schemas.CustomWord]):
+    try:
+        # Get existing word list from db
+        existing_word_list_db = get_word_list_by_id(
+            db=db, word_list_id=word_list_id)
+
+        # extract all the words and convert to lower case
+        words_db = [word_obj.word.lower()
+                    for word_obj in existing_word_list_db.words]
+
+        # Add non-duplicated words to the existing word list.
+        for word_obj in word_objs:
+            if word_obj.word.lower() not in words_db:
+                word_to_add = models.Word(**word_obj.model_dump())
+                word_to_add.audioUrl = get_audio_url(word_to_add.word)
+
+                db.add(word_to_add)
+                db.flush()
+                existing_word_list_db.words.append(word_to_add)
+        db.commit()
+        db.refresh(existing_word_list_db)
+    except IntegrityError:
+        raise HTTPException(status_code=400, detail="Integrity Error")
+
+    return existing_word_list_db
+
+
+def create_custom_word_list(db: Session, topic: str, user_id: int, words: List[schemas.CustomWord]):
+    try:
+        # Create a new word list
+        db_word_list = models.WordList(title=topic, ownerId=user_id)
+        db.add(db_word_list)
+        db.flush()
+
+        # Add custom words, if any.
+        if words:
+            for word_to_add in words:
+                db_word = models.Word(**word_to_add.model_dump())
+                db_word.audioUrl = get_audio_url(db_word.word)
+                db.add(db_word)
+                db.flush()
+                db_word_list.words.append(db_word)
         db.commit()
         db.refresh(db_word_list)
 
@@ -79,6 +145,7 @@ def get_more_words(db: Session, word_list_id: int):
     for word in additional_word_list:
         word_to_add = word_dict(word)
         db_word = models.Word(**word_to_add)
+        db_word.audioUrl = get_audio_url(db_word.word)
         db.add(db_word)
         db.flush()
         db_word_list.words.append(db_word)
@@ -104,11 +171,15 @@ def update_word_list(db: Session, word_list: schemas.WordListUpdate):
 def delete_word_list(db: Session, word_list_id: int):
     db_word_list = get_word_list_by_id(db, word_list_id)
 
-    if db_word_list is None:
-        raise HTTPException(status_code=404, detail="Word list not found")
+    # Extract audio urls
+    audio_urls = [word.audioUrl for word in db_word_list.words]
 
     db.delete(db_word_list)
     db.commit()
+
+    # Delete audio files
+    if audio_urls:
+        delete_audio_file(audio_urls)
 
     return db_word_list
 
@@ -138,6 +209,7 @@ def add_a_word(db: Session, word: schemas.WordList):
     try:
         word_to_add = word_dict(word.word)
         db_word = models.Word(**word_to_add, wordListId=word.wordListId)
+        db_word.audioUrl = get_audio_url(db_word.word)
         db.add(db_word)
         db.flush()
         db.commit()
@@ -181,6 +253,7 @@ def update_words(db: Session, words_to_update: List[schemas.Word]) -> List[schem
 
 def delete_words(db: Session, word_ids: List[int]):
     deleted_words = []
+    audio_urls = []
 
     try:
         for word_id in word_ids:
@@ -196,5 +269,8 @@ def delete_words(db: Session, word_ids: List[int]):
     except Exception as e:
         db.rollback()
         raise e
+
+    audio_urls = [word.audioUrl for word in deleted_words]
+    delete_audio_file(audio_urls)
 
     return deleted_words

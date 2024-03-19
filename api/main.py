@@ -5,6 +5,7 @@ from .models import models
 from .database import get_db_session
 from .routers import users, word_lists
 from .dependencies import check_env
+import os
 
 load_dotenv()
 check_env()
@@ -15,6 +16,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 app.include_router(users.router)
 app.include_router(word_lists.router)
+
 
 app.add_middleware(
     CORSMiddleware,

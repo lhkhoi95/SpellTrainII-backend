@@ -33,7 +33,11 @@ def check_env():
     env_vars = [
         "SPELLTRAIN2_DATABASE_URL",
         "OPENAI_API_KEY",
-        "GOOGLE_GEMINI_API_KEY"
+        "GOOGLE_GEMINI_API_KEY",
+        "SECRET_KEY",
+        "ALGORITHM",
+        "ACCESS_TOKEN_EXPIRE_MINUTES",
+
     ]
     if os.getenv("TEST_MODE") == "True":
         print("\033[92m" + "Running in test mode." + "\033[0m")

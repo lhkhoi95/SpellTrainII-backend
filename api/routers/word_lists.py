@@ -56,7 +56,7 @@ async def create_custom_word_list(custom_word_list: CustomWordList, db: Session 
                 word=word.word, topic=sanitized_topic)
             if not result.isValid:
                 raise HTTPException(
-                    status_code=400, detail=f"Word '{word.word}' is not valid.")
+                    status_code=400, detail=f"{word.word} is not a valid word.")
 
     # If word list exists, try to add words to the existing one but ignore duplicate words.
     word_list_exists = crud.get_user_word_list_by_title(
@@ -127,37 +127,37 @@ async def get_more_words(word_list_id: int, db: Session = Depends(get_db), user_
 
 
 @router.post("/words", response_model=WordList)
-async def add_a_word(word: WordCreate, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+async def add_words(words: List[WordCreate], db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     # Check if user has access to the word list
     db_word_list = crud.get_word_list_by_id(
-        db, word_list_id=word.wordListId, user_id=user_id)
-
-    sanitized_word = re.sub(r'\s+', ' ', word.word).strip()
+        db, word_list_id=words[0].wordListId, user_id=user_id)
 
     # Check if word list exists
     if db_word_list is None:
         raise HTTPException(status_code=404, detail="Word list not found")
 
-    # Check if word is valid
+    # Check if words are valid
     spelltrain2AI = SpellTrain2AI()
-    result = spelltrain2AI.evaluate_word_topic(
-        word=sanitized_word, topic=db_word_list.title)
-    if not result.isValid:
-        raise HTTPException(
-            status_code=400, detail="This is not a valid word.")
-
-    # Check for repeat word in word list
-    for db_word in db_word_list.words:
-        if db_word.word.lower() == sanitized_word.lower():
+    for word in words:
+        sanitized_word = re.sub(r'\s+', ' ', word.word).strip()
+        result = spelltrain2AI.evaluate_word_topic(
+            word=sanitized_word, topic=db_word_list.title)
+        if not result.isValid:
             raise HTTPException(
-                status_code=400, detail="This word already exists in the word list.")
+                status_code=400, detail=f"{sanitized_word} is not a valid word.")
+
+        # Check for repeat word in word list
+        for db_word in db_word_list.words:
+            if db_word.word.lower() == sanitized_word.lower():
+                raise HTTPException(
+                    status_code=400, detail=f"{word.word} already exists in the word list.")
 
     try:
-        return crud.add_a_word(db=db, word=word)
+        return crud.add_words(db=db, words=words)
     except Exception as e:
         print(e)
         raise HTTPException(
-            status_code=400, detail="Error adding word")
+            status_code=400, detail="Error adding words")
 
 
 @router.patch("/words", response_model=List[Word])

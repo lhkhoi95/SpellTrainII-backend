@@ -205,18 +205,22 @@ def get_word_info(db: Session, word_id: int):
     return db_word
 
 
-def add_a_word(db: Session, word: schemas.WordList):
+def add_words(db: Session, words: List[schemas.Word]):
     try:
-        word_to_add = word_dict(word.word)
-        db_word = models.Word(**word_to_add, wordListId=word.wordListId)
-        db_word.audioUrl = get_audio_url(db_word.word)
-        db.add(db_word)
-        db.flush()
-        db.commit()
-        db.refresh(db_word)
+        added_words = []
+        for word in words:
+            word_to_add = word_dict(word.word)
+            db_word = models.Word(**word_to_add, wordListId=word.wordListId)
+            db_word.audioUrl = get_audio_url(db_word.word)
+            db.add(db_word)
+            db.flush()
+            added_words.append(db_word)
 
-        # Get the words in the word list
-        db_word_list = get_word_list_by_id(db, word.wordListId)
+        db.commit()
+        db.refresh(added_words[0])
+
+        # Get the word list
+        db_word_list = get_word_list_by_id(db, words[0].wordListId)
 
         return db_word_list
     except Exception as e:

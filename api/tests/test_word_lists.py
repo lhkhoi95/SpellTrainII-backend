@@ -143,7 +143,6 @@ def test_user_1_create_invalid_word_list():
         response = client.put(
             f"word-lists/", json=invalid_word_list, headers=headers_user_1)
         assert response.status_code in [400, 422]
-        print(response.json())
 
 
 def test_get_word_list_by_id():
@@ -375,15 +374,16 @@ def test_add_invalid_words_to_word_list_2():
     for invalid_word in IRRELEVANT_WORDS:
         word = {"word": str(invalid_word), "wordListId": word_list_id}
         response = client.post("/word-lists/words",
-                               json=word, headers=headers_user_1)
+                               json=[word], headers=headers_user_1)
         assert response.status_code == 400
-        assert response.json().get("detail") == "This is not a valid word."
+        assert response.json().get(
+            "detail") == f"{invalid_word} is not a valid word."
 
     # Test adding a word with an invalid word list ID
     for invalid_word_list_id in INVALID_INT_IDS:
         word = {"word": "test", "wordListId": invalid_word_list_id}
         response = client.post("/word-lists/words",
-                               json=word, headers=headers_user_1)
+                               json=[word], headers=headers_user_1)
         assert response.status_code == 404
         assert response.json().get("detail") == "Word list not found"
 
@@ -396,7 +396,7 @@ def test_add_words_to_word_list_2():
     for tech_word in TECH_WORDS:
         word = {"word": tech_word, "wordListId": word_list_id}
         response = client.post("/word-lists/words",
-                               json=word, headers=headers_user_1)
+                               json=[word], headers=headers_user_1)
         assert response.status_code == 200
         # Check if the word was added to the word list
         new_word_list = response.json().get("words")
@@ -406,9 +406,10 @@ def test_add_words_to_word_list_2():
     for tech_word in TECH_WORDS_WITH_SPACES:
         word = {"word": tech_word, "wordListId": word_list_id}
         response = client.post("/word-lists/words",
-                               json=word, headers=headers_user_1)
+                               json=[word], headers=headers_user_1)
         assert response.status_code == 400
-        assert response.json().get("detail") == "This word already exists in the word list."
+        assert response.json().get(
+            "detail") == f"{tech_word} already exists in the word list."
 
 
 def test_delete_users():

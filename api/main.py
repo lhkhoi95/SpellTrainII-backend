@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
 from .models import models
 from .database import get_db_session
 from .routers import users, word_lists
@@ -14,6 +15,7 @@ SessionLocal, engine = get_db_session()
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 app.include_router(users.router)
 app.include_router(word_lists.router)
 

@@ -10,6 +10,9 @@ ADD . /app
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create the audio directory if it doesn't exist
+RUN mkdir -p /app/audio
+
 # Make port 80 available to the world outside this container
 EXPOSE 8000
 

@@ -16,7 +16,7 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 # Create audio directory if it doesn't exist
-if not os.path.exists("audio"):
+if not os.path.exists("app/audio"):
     os.makedirs("audio")
 app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 app.include_router(users.router)

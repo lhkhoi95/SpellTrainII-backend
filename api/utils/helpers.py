@@ -20,9 +20,6 @@ def word_dict(word: str):
 def get_audio_url(word: str):
     # Create a speech object
     tts = gTTS(text=word, lang='en')
-    # Create audio directory if it doesn't exist
-    if not os.path.exists("audio"):
-        os.makedirs("audio")
     # Generate a unique id for the file name
     unique_id = str(uuid.uuid4())
     # Save the audio file

@@ -15,7 +15,7 @@ router = APIRouter(
 
 
 @router.get("/", response_model=WordList)
-async def create_generative_word_list(topic: Annotated[str, Query(min_length=3)], db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+async def create_generative_word_list(topic: Annotated[str, Query(min_length=2)], db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     sanitized_topic = re.sub(r'\s+', ' ', topic).strip().title()
     spelltrain2AI = SpellTrain2AI()
 
@@ -73,10 +73,30 @@ async def update_word_list_title(word_list: WordListUpdate, db: Session = Depend
     # Check if word_list_id exists
     db_word_list = crud.get_word_list_by_id(
         db, word_list_id=word_list.id, user_id=user_id)
-
     if db_word_list is None:
         raise HTTPException(status_code=404, detail="Word list not found")
 
+    # Validate the new title
+    spelltrain2AI = SpellTrain2AI()
+    result = spelltrain2AI.evaluate_topic(word_list.title)
+    if not result.isValid:
+        raise HTTPException(
+            status_code=400, detail=result.reason)
+
+    # Check for repeated title
+    word_list_exists = crud.get_user_word_list_by_title(
+        db=db, title=word_list.title, uid=user_id)
+    if word_list_exists:
+        raise HTTPException(
+            status_code=400, detail="Word list with the same title already exists.")
+
+    # For each word in the word list, check if the word is related to the new title
+    for word in db_word_list.words:
+        result = spelltrain2AI.evaluate_word_topic(
+            word=word.word, topic=word_list.title)
+        if not result.isValid:
+            raise HTTPException(
+                status_code=400, detail=f"The new title {word_list.title} does not match the word {word.word} in the word list.")
     try:
         return crud.update_word_list(db=db, word_list=word_list)
     except Exception as e:
@@ -162,8 +182,10 @@ async def add_words(words: List[WordCreate], db: Session = Depends(get_db), user
 
 @router.patch("/words", response_model=List[Word])
 async def update_words(words: List[Word], db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
-    # Check if user has access to the word list
+    spelltrain2AI = SpellTrain2AI()
+
     for word in words:
+        # Check if word list exists
         db_word_list = crud.get_word_list_by_id(
             db, word_list_id=word.wordListId, user_id=user_id)
         if db_word_list is None:
@@ -176,6 +198,13 @@ async def update_words(words: List[Word], db: Session = Depends(get_db), user_id
             raise HTTPException(
                 status_code=404, detail=f"Word ID {word.id} not found")
 
+        # Check if word is valid
+        sanitized_word = re.sub(r'\s+', ' ', word.word).strip()
+        result = spelltrain2AI.evaluate_word_topic(
+            word=sanitized_word, topic=db_word_list.title)
+        if not result.isValid:
+            raise HTTPException(
+                status_code=400, detail=f"{word.word} is not a valid word.")
     try:
         return crud.update_words(db=db, words_to_update=words)
     except Exception as e:

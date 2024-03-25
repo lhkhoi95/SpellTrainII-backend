@@ -54,13 +54,13 @@ def test_create_generative_word_list_invalid_topic():
         response = client.get(
             f"/word-lists/?topic={invalid_topic}", headers=headers_user_1)
         assert response.status_code in [400, 422]
-        # Invalid length
+        # Invalid title length
         if response.status_code == 422:
             assert response.json().get("detail")[0].get(
-                'msg') == "String should have at least 3 characters"
+                "msg") == INVALID_TITLE_LENGTH_MSG
         # Inappropriate topic
         if response.status_code == 400:
-            assert response.json().get("detail") is not None
+            assert len(response.json().get("detail")) > 0
 
 
 def test_user_1_create_generative_word_list():
@@ -238,14 +238,17 @@ def test_get_word_info():
 def test_update_words():
     words = word_list_user_1.get("words")
 
-    # Update all words
-    for word_to_update in words:
-        word_to_update["definition"] = "Test update definition"
-        word_to_update["rootOrigin"] = "Test update root origin"
-        word_to_update["usage"] = "Test update usage"
-        word_to_update["languageOrigin"] = "Test update language origin"
-        word_to_update["partsOfSpeech"] = "Test update parts of speech"
-        word_to_update["alternatePronunciation"] = "Test update alternate pronunciation"
+    # Select 5 random words from the word list to test
+    indexes = random.sample(range(0, len(words)), 5)
+
+    for i in indexes:
+        word = words[i]
+        word["definition"] = "Test definition"
+        word["rootOrigin"] = "Test root origin"
+        word["usage"] = "Test usage"
+        word["languageOrigin"] = "Test language origin"
+        word["partsOfSpeech"] = "Test parts of speech"
+        word["alternatePronunciation"] = "Test alternate pronunciation"
 
     # Update the words
     response = client.patch("/word-lists/words",
@@ -256,18 +259,34 @@ def test_update_words():
 
 
 def test_update_invalid_words():
-    # Test updating invalid words
-    word_id = INVALID_WORD[0].get("id")
+    # Invalid word ID
+    word_id = INVALID_WORDS_TO_UPDATE[0].get("id")
     response = client.patch("/word-lists/words",
-                            json=INVALID_WORD, headers=headers_user_1)
+                            json=[INVALID_WORDS_TO_UPDATE[0]], headers=headers_user_1)
     assert response.status_code == 404
     assert response.json() == {"detail": f"Word ID {word_id} not found"}
 
+    # Invalid word list ID
     response = client.patch("/word-lists/words",
-                            json=INVALID_WORD_LIST_ID, headers=headers_user_1)
+                            json=[INVALID_WORDS_TO_UPDATE[1]], headers=headers_user_1)
     assert response.status_code == 404
     assert response.json() == {
         "detail": "Word list not found"}
+
+    # Invalid word content
+    response = client.patch("/word-lists/words",
+                            json=[INVALID_WORDS_TO_UPDATE[2]], headers=headers_user_1)
+    invalid_word = INVALID_WORDS_TO_UPDATE[2].get("word")
+    assert response.status_code == 400
+    assert response.json().get(
+        "detail") == f"{invalid_word} is not a valid word."
+
+    # Empty word content
+    response = client.patch("/word-lists/words",
+                            json=[INVALID_WORDS_TO_UPDATE[3]], headers=headers_user_1)
+    assert response.status_code == 422
+    assert response.json().get("detail")[0].get(
+        "msg") == INVALID_WORD_LENGTH_MSG
 
 
 def test_delete_words_invalid_word_id():
@@ -301,19 +320,41 @@ def test_delete_words():
 
 
 def test_update_invalid_word_list():
-    # Test updating an invalid word list
-    for invalid_word_list in INVALID_WORD_LISTS_TO_UPDATE:
+    length = len(INVALID_WORD_LISTS_TO_UPDATE)
+    # Invalid IDs (first 2 elements)
+    for invalid_word_list in INVALID_WORD_LISTS_TO_UPDATE[:2]:
         response = client.patch(
             "/word-lists/", json=invalid_word_list, headers=headers_user_1)
         assert response.status_code == 404
         assert response.json() == {"detail": "Word list not found"}
+
+    # Inappropriate word content (third element)
+    invalid_word_list = INVALID_WORD_LISTS_TO_UPDATE[2]
+    response = client.patch(
+        "/word-lists/", json=invalid_word_list, headers=headers_user_1)
+    assert response.status_code == 400
+    assert len(response.json().get("detail")) > 0
+
+    # Invalid length (fourth, fifth elements)
+    for invalid_word_list in INVALID_WORD_LISTS_TO_UPDATE[3:length-1]:
+        response = client.patch(
+            "/word-lists/", json=invalid_word_list, headers=headers_user_1)
+        assert response.status_code == 422
+        assert response.json().get("detail")[0].get(
+            "msg") == INVALID_TITLE_LENGTH_MSG
+
+    # Repeated title (last element)
+    response = client.patch(
+        "/word-lists/", json=INVALID_WORD_LISTS_TO_UPDATE[-1], headers=headers_user_1)
+    assert response.status_code == 400
+    assert response.json().get("detail") == "Word list with the same title already exists."
 
 
 def test_update_word_list():
     word_list_id = word_list_user_1.get("id")
     assert word_list_id is not None
 
-    word_list_user_1["title"] = "Test update title"
+    word_list_user_1["title"] = UPDATED_TOPIC1
 
     response = client.patch(
         "/word-lists/", json=word_list_user_1, headers=headers_user_1)

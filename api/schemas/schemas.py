@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class Word(BaseModel):
     id: int
-    word: str
+    word: str = Field(..., max_length=50, min_length=1)
     definition: Optional[str] = None
     rootOrigin: Optional[str] = None
     usage: Optional[str] = None
@@ -53,19 +53,19 @@ class WordInfo(BaseModel):
 
 class WordList(BaseModel):
     id: int
-    title: str
+    title: str = Field(..., min_length=2)
     ownerId: int
     words: List[Word] = []
 
 
 class CustomWordList(BaseModel):
-    title: str = Field(min_length=3)
+    title: str = Field(min_length=2)
     words: List[CustomWord] = Field(max_length=30)
 
 
 class WordListUpdate(BaseModel):
     id: int
-    title: str
+    title: str = Field(min_length=2)
 
 
 class UserBase(BaseModel):

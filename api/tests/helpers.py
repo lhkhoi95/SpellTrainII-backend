@@ -5,6 +5,8 @@ CUSTOM_WORD_LIST_TITLE = "Computer"
 CUSTOM_WORDS = ['Ram', 'CPU', 'GPU', 'Mother Board']
 INVALID_INT_IDS = [-999, 0, 999]
 INVALID_STR_IDS = ['abc', '123', 'abc123', '123abc', 'abc123xyz', '123abcxyz']
+INVALID_TITLE_LENGTH_MSG = "String should have at least 2 characters"
+INVALID_WORD_LENGTH_MSG = "String should have at least 1 character"
 
 TEST_USER = {
     'name': 'Test User',
@@ -59,6 +61,7 @@ UPDATED_TEST_USER_RESPONSE = {'name': 'New Name',
 
 TOPIC1 = "Science"
 TOPIC2 = "Technology"
+UPDATED_TOPIC1 = "Science and Technology"
 
 TECH_WORDS = [
     "Hardware",
@@ -83,7 +86,7 @@ INVALID_TOPICS = [
     "xyz",
 ]
 
-INVALID_WORD = [
+INVALID_WORDS_TO_UPDATE = [
     {
         "id": -999,  # invalid id
         "word": "string",
@@ -95,10 +98,7 @@ INVALID_WORD = [
         "alternatePronunciation": "string",
         "audioUrl": "string",
         "wordListId": 1
-    }
-]
-
-INVALID_WORD_LIST_ID = [
+    },
     {
         "id": 1,
         "word": "string",
@@ -108,11 +108,37 @@ INVALID_WORD_LIST_ID = [
         "languageOrigin": "string",
         "partsOfSpeech": "string",
         "alternatePronunciation": "string",
+        "audioUrl": "string",
         "wordListId": -999  # invalid id
+    },
+    {
+        "id": 1,
+        "word": "Child Abuse",  # Inappropriate word
+        "definition": "string",
+        "rootOrigin": "string",
+        "usage": "string",
+        "languageOrigin": "string",
+        "partsOfSpeech": "string",
+        "alternatePronunciation": "string",
+        "audioUrl": "string",
+        "wordListId": 1
+    },
+    {
+        "id": 1,
+        "word": "",  # Invalid word
+        "definition": "string",
+        "rootOrigin": "string",
+        "usage": "string",
+        "languageOrigin": "string",
+        "partsOfSpeech": "string",
+        "alternatePronunciation": "string",
+        "audioUrl": "string",
+        "wordListId": 1
     }
 ]
 
 INVALID_WORD_LISTS_TO_UPDATE = [
+    # First 2 are invalid ids
     {
         "id": -999,
         "title": "Test update title"
@@ -120,6 +146,25 @@ INVALID_WORD_LISTS_TO_UPDATE = [
     {
         "id": 999,
         "title": "Test update title"
+    },
+    # Invalid title
+    {
+        "id": 1,
+        "title": "Child Abuse"  # Inappropriate title
+    },
+    # Invalid length
+    {
+        "id": 1,
+        "title": ""  # Empty
+    },
+    {
+        "id": 1,
+        "title": "A"  # Too short
+    },
+    # Repeat of existing title
+    {
+        "id": 1,
+        "title": TOPIC1  # Already exists
     }
 ]
 

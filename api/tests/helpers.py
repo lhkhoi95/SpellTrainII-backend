@@ -164,7 +164,7 @@ INVALID_WORD_LISTS_TO_UPDATE = [
     # Repeat of existing title
     {
         "id": 1,
-        "title": TOPIC1  # Already exists
+        "title": CUSTOM_WORD_LIST_TITLE  # Already exists
     }
 ]
 

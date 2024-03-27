@@ -76,19 +76,23 @@ async def update_word_list_title(word_list: WordListUpdate, db: Session = Depend
     if db_word_list is None:
         raise HTTPException(status_code=404, detail="Word list not found")
 
+    # If title is unchanged, return the word list
+    if db_word_list.title.lower() == word_list.title.lower():
+        return db_word_list
+
+    # Check for repeated title.
+    word_list_exists = crud.get_user_word_list_by_title(
+        db=db, title=word_list.title, uid=user_id)
+    if word_list_exists:
+        raise HTTPException(
+            status_code=400, detail="Word list with the same title already exists.")
+
     # Validate the new title
     spelltrain2AI = SpellTrain2AI()
     result = spelltrain2AI.evaluate_topic(word_list.title)
     if not result.isValid:
         raise HTTPException(
             status_code=400, detail=result.reason)
-
-    # Check for repeated title
-    word_list_exists = crud.get_user_word_list_by_title(
-        db=db, title=word_list.title, uid=user_id)
-    if word_list_exists:
-        raise HTTPException(
-            status_code=400, detail="Word list with the same title already exists.")
 
     # For each word in the word list, check if the word is related to the new title
     for word in db_word_list.words:
@@ -198,13 +202,22 @@ async def update_words(words: List[Word], db: Session = Depends(get_db), user_id
             raise HTTPException(
                 status_code=404, detail=f"Word ID {word.id} not found")
 
-        # Check if word is valid
         sanitized_word = re.sub(r'\s+', ' ', word.word).strip()
-        result = spelltrain2AI.evaluate_word_topic(
-            word=sanitized_word, topic=db_word_list.title)
-        if not result.isValid:
-            raise HTTPException(
-                status_code=400, detail=f"{word.word} is not a valid word.")
+
+        # If the new word is different from the old word, check if the new word is valid and not a repeat word.
+        if sanitized_word.lower() != db_word.word.lower():
+            # Check for repeat word.
+            for db_word in db_word_list.words:
+                if db_word.word.lower() == sanitized_word.lower():
+                    raise HTTPException(
+                        status_code=400, detail=f"{word.word} already exists in the word list.")
+
+            # Check if word is valid
+            result = spelltrain2AI.evaluate_word_topic(
+                word=sanitized_word, topic=db_word_list.title)
+            if not result.isValid:
+                raise HTTPException(
+                    status_code=400, detail=f"{word.word} is not a valid word.")
     try:
         return crud.update_words(db=db, words_to_update=words)
     except Exception as e:

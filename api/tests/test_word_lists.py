@@ -354,8 +354,14 @@ def test_update_word_list():
     word_list_id = word_list_user_1.get("id")
     assert word_list_id is not None
 
-    word_list_user_1["title"] = UPDATED_TOPIC1
+    # Update with unchanged title
+    response = client.patch(
+        "/word-lists/", json=word_list_user_1, headers=headers_user_1)
+    assert response.status_code == 200
+    assert response.json().get("title") == word_list_user_1["title"]
 
+    # Update with a new title
+    word_list_user_1["title"] = UPDATED_TOPIC1
     response = client.patch(
         "/word-lists/", json=word_list_user_1, headers=headers_user_1)
     assert response.status_code == 200

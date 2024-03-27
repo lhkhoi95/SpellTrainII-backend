@@ -86,7 +86,8 @@ def update_custom_word_list(db: Session, word_list_id: str, word_objs: List[sche
         # Add non-duplicated words to the existing word list.
         for word_obj in word_objs:
             if word_obj.word.lower() not in words_db:
-                word_to_add = models.Word(**word_obj.model_dump())
+                word_to_add = models.Word(
+                    **word_obj.model_dump(), is_ai_generated=False)
                 word_to_add.audioUrl = get_audio_url(word_to_add.word)
 
                 db.add(word_to_add)
@@ -103,14 +104,16 @@ def update_custom_word_list(db: Session, word_list_id: str, word_objs: List[sche
 def create_custom_word_list(db: Session, topic: str, user_id: int, words: List[schemas.CustomWord]):
     try:
         # Create a new word list
-        db_word_list = models.WordList(title=topic, ownerId=user_id)
+        db_word_list = models.WordList(
+            title=topic, ownerId=user_id, is_ai_generated=False)
         db.add(db_word_list)
         db.flush()
 
         # Add custom words, if any.
         if words:
             for word_to_add in words:
-                db_word = models.Word(**word_to_add.model_dump())
+                db_word = models.Word(
+                    **word_to_add.model_dump(), is_ai_generated=False)
                 db_word.audioUrl = get_audio_url(db_word.word)
                 db.add(db_word)
                 db.flush()
@@ -210,7 +213,8 @@ def add_words(db: Session, words: List[schemas.Word]):
         added_words = []
         for word in words:
             word_to_add = word_dict(word.word)
-            db_word = models.Word(**word_to_add, wordListId=word.wordListId)
+            db_word = models.Word(
+                **word_to_add, wordListId=word.wordListId, is_ai_generated=False)
             db_word.audioUrl = get_audio_url(db_word.word)
             db.add(db_word)
             db.flush()

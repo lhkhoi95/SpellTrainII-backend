@@ -75,15 +75,17 @@ def test_user_1_create_generative_word_list():
     for word in word_list_user_1.get("words"):
         assert word.get("word") != ""
         assert all(value == "" for key, value in word.items()
-                   if not key in ['word', 'wordListId', 'id', 'audioUrl'])
+                   if not key in ['word', 'wordListId', 'id', 'audioUrl', 'is_ai_generated'])
     assert response1.json() != {"detail": "Word list not found"}
     assert response1.json().get('ownerId') == 1
+    assert response1.json().get("is_ai_generated") == True
 
     # Test getting a word list by the same topic (should be faster)
     response2 = client.get(
         f"/word-lists/?topic={TOPIC1}", headers=headers_user_1)
     assert response2.status_code == 200
     assert response1.json() == response2.json()
+    assert response1.json().get("is_ai_generated") == True
 
     # Test no duplicate words in the word list
     word_objects = response2.json().get("words")
@@ -99,13 +101,14 @@ def test_user_2_create_generative_word_list():
     assert response.json() != {}
     assert response.json() != {"detail": "Word list not found"}
     assert response.json().get('ownerId') == 2
+    assert response.json().get("is_ai_generated") == True
     assert response.status_code == 200
 
     # The alternative pronunciation, definition, etc. should be empty strings except for word, wordListId, audioUrl, and id.
     for word in response.json().get("words"):
         assert word.get("word") != ""
         assert all(value == "" for key, value in word.items()
-                   if not key in ['word', 'wordListId', 'id', 'audioUrl'])
+                   if not key in ['word', 'wordListId', 'id', 'audioUrl', 'is_ai_generated'])
 
     # Test no duplicate words in the word list
     word_objects = response.json().get("words")
@@ -121,6 +124,7 @@ def test_user_1_create_custom_word_list():
     for word_obj in word_objs:
         assert word_obj.get("word") in CUSTOM_WORDS
         assert word_obj.get("audioUrl") != ""
+        assert word_obj.get("is_ai_generated") == False
 
     # Add some new words including repeated words.
     response = client.put(
@@ -129,6 +133,7 @@ def test_user_1_create_custom_word_list():
     for word_obj in word_objs:
         assert word_obj.get("word") in CUSTOM_WORDS
         assert word_obj.get("audioUrl") is not None
+        assert word_obj.get("is_ai_generated") == False
     assert len(response.json().get("words")) == len(CUSTOM_WORDS)
 
     # Create a new word list with empty words
@@ -197,6 +202,8 @@ def test_add_more_words_to_word_list():
     assert response.status_code == 200
     assert len(response.json().get("words")) > len(
         word_list_user_1.get("words"))
+    for word_obj in response.json().get("words"):
+        assert word_obj.get("is_ai_generated") == True
 
 
 def test_get_word_info():

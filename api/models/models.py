@@ -24,6 +24,7 @@ class WordList(Base):
 
     id = Column(Integer, primary_key=True)
     title = Column(String)
+    is_ai_generated = Column(Boolean, default=True)
     ownerId = Column(Integer, ForeignKey('users.id'))
 
     owner = relationship("User", back_populates="wordLists")
@@ -45,6 +46,7 @@ class Word(Base):
     partsOfSpeech = Column(String)
     alternatePronunciation = Column(String)
     audioUrl = Column(String)
+    is_ai_generated = Column(Boolean, default=True)
 
     wordListId = Column(
         Integer,

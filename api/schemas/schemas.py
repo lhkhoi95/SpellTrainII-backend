@@ -12,6 +12,7 @@ class Word(BaseModel):
     partsOfSpeech: Optional[str] = None
     alternatePronunciation: Optional[str] = None
     audioUrl: Optional[str] = None
+    is_ai_generated: bool = Field(default=True)
     wordListId: int
 
     # This allows us to convert any kind of objects to Pydantic models
@@ -55,6 +56,7 @@ class WordList(BaseModel):
     id: int
     title: str = Field(..., min_length=2)
     ownerId: int
+    is_ai_generated: Optional[bool] = True
     words: List[Word] = []
 
 

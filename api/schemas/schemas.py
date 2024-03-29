@@ -12,7 +12,7 @@ class Word(BaseModel):
     partsOfSpeech: Optional[str] = None
     alternatePronunciation: Optional[str] = None
     audioUrl: Optional[str] = None
-    is_ai_generated: bool = Field(default=True)
+    isAIGenerated: bool = Field(default=True)
     wordListId: int
 
     # This allows us to convert any kind of objects to Pydantic models
@@ -56,7 +56,7 @@ class WordList(BaseModel):
     id: int
     title: str = Field(..., min_length=2)
     ownerId: int
-    is_ai_generated: Optional[bool] = True
+    isAIGenerated: Optional[bool] = True
     words: List[Word] = []
 
 
@@ -134,4 +134,22 @@ class EvaluatedTopic(EvaluatedInput):
     reason: str
 
     # This allows us to convert any kind of objects to Pydantic models
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GameBase(BaseModel):
+    level: int = 1
+    games_bank: str = ""
+    startingIndex: int = 0
+    endingIndex: int = 0
+    wordListId: int
+
+
+class GameCreate(GameBase):
+    pass
+
+
+class Game(GameBase):
+    id: int
+
     model_config = ConfigDict(from_attributes=True)

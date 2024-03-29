@@ -192,6 +192,99 @@ class SpellTrain2AI:
 
         return self._merge_results(results_with_unknown)
 
+    def get_word_usage(self, word: str, topic: str) -> str:
+        prompt = f'Please provide a short sentence using the word "{word}" that is related to the topic "{topic}". The sentence should be concise and contain less than 7 words.'
+        client = self._openai_client()
+
+        messages = [
+            {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output a sentence using a word.'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"usage": "Your sentence here."}'},
+            {'role': 'user', 'content': prompt},
+        ]
+        try:
+            completion = client.chat.completions.create(
+                messages=messages,
+                model=self.openai_model,
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=500, detail="Error getting word usage. Please try again later.")
+
+        self._print_cost(completion)
+
+        json_response = json.loads(completion.choices[0].message.content)
+
+        return json_response['usage']
+
+    def get_word_pronunciation(self, word: str) -> str:
+        prompt = f'Provide the International Phonetic Alphabet (IPA) pronunciation of the word "{word}".'
+        client = self._openai_client()
+
+        messages = [
+            {'role': 'system',
+                'content': 'You are a helpful dictionary assistant designed to output the International Phonetic Alphabet (IPA) pronunciation of a word.'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"alternatePronunciation": "Your pronunciation here."}'},
+            {'role': 'user', 'content': prompt},
+        ]
+        try:
+            completion = client.chat.completions.create(
+                messages=messages,
+                model=self.openai_model,
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=500, detail="Error getting word pronunciation. Please try again later.")
+
+        self._print_cost(completion)
+
+        json_response = json.loads(completion.choices[0].message.content)
+
+        return json_response['pronunciation']
+
+    def get_language_of_origin(self, word: str) -> str:
+        prompt = f'What is the language of origin for the word "{word}"?'
+        client = self._openai_client()
+
+        messages = [
+            {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output the root origin of a word.'},
+            {'role': 'system', 'content': 'Here are some examples of root origins: Latin, Greek, French, etc. Please do not provide anything else except the root origin.'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"languageOrigin": "Your root origin here."}'},
+            {'role': 'user', 'content': prompt},
+        ]
+
+        try:
+            completion = client.chat.completions.create(
+                messages=messages,
+                model=self.openai_model,
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=500, detail="Error getting word origin. Please try again later.")
+
+        self._print_cost(completion)
+
+        json_response = json.loads(completion.choices[0].message.content)
+
+        return json_response['languageOrigin']
+
+    def get_word_definition(self, word: str) -> str:
+        pass
+
+    def get_word_parts_of_speech(self, word: str) -> str:
+        pass
+
+    def get_word_alternate_pronunciation(self, word: str) -> str:
+        pass
+
     def _openai_client(self) -> OpenAI:
         """
         Returns an instance of the OpenAI client.
@@ -247,7 +340,7 @@ class SpellTrain2AI:
             Exception: If an error occurs during the retrieval process.
         """
         client = self._google_gemini_client(model=default_model)
-        prompt = f'The word "{word}" is related to the topic "{topic}". Provide information about this word: "{word}". The JSON response should be in the following format: {{"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "usage of the word in a short sentence", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word."}}'
+        prompt = f'The word "{word}" is related to the topic "{topic}". Provide information about this word: "{word}". The JSON response should be in the following format: {{"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "a short sentence that contains the word", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word."}}'
 
         for i in range(self._RETRY_COUNT):
             try:

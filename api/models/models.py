@@ -24,12 +24,16 @@ class WordList(Base):
 
     id = Column(Integer, primary_key=True)
     title = Column(String)
-    is_ai_generated = Column(Boolean, default=True)
+    isAIGenerated = Column(Boolean, default=True)
     ownerId = Column(Integer, ForeignKey('users.id'))
 
     owner = relationship("User", back_populates="wordLists")
     words = relationship(
         "Word",
+        cascade="all, delete-orphan",
+        back_populates="wordList")
+    games = relationship(
+        "Game",
         cascade="all, delete-orphan",
         back_populates="wordList")
 
@@ -46,9 +50,23 @@ class Word(Base):
     partsOfSpeech = Column(String)
     alternatePronunciation = Column(String)
     audioUrl = Column(String)
-    is_ai_generated = Column(Boolean, default=True)
+    isAIGenerated = Column(Boolean, default=True)
 
     wordListId = Column(
         Integer,
         ForeignKey('word_lists.id', ondelete="CASCADE"))
     wordList = relationship("WordList", back_populates="words")
+
+
+class Game(Base):
+    __tablename__ = 'games'
+
+    id = Column(Integer, primary_key=True)
+    level = Column(Integer, default=1)
+    games_bank = Column(String)
+    startingIndex = Column(Integer, default=0)
+    endingIndex = Column(Integer, default=0)
+    wordListId = Column(
+        Integer,
+        ForeignKey('word_lists.id', ondelete="CASCADE"))
+    wordList = relationship("WordList", back_populates="games")

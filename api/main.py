@@ -2,6 +2,8 @@ from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
+
+from api.routers import games
 from .models import models
 from .database import get_db_session
 from .routers import users, word_lists
@@ -21,6 +23,7 @@ if not os.path.exists("audio"):
 app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 app.include_router(users.router)
 app.include_router(word_lists.router)
+app.include_router(games.router)
 
 
 app.add_middleware(

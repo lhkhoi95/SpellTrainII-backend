@@ -87,7 +87,7 @@ def update_custom_word_list(db: Session, word_list_id: str, word_objs: List[sche
         for word_obj in word_objs:
             if word_obj.word.lower() not in words_db:
                 word_to_add = models.Word(
-                    **word_obj.model_dump(), is_ai_generated=False)
+                    **word_obj.model_dump(), isAIGenerated=False)
                 word_to_add.audioUrl = get_audio_url(word_to_add.word)
 
                 db.add(word_to_add)
@@ -105,7 +105,7 @@ def create_custom_word_list(db: Session, topic: str, user_id: int, words: List[s
     try:
         # Create a new word list
         db_word_list = models.WordList(
-            title=topic, ownerId=user_id, is_ai_generated=False)
+            title=topic, ownerId=user_id, isAIGenerated=False)
         db.add(db_word_list)
         db.flush()
 
@@ -113,7 +113,7 @@ def create_custom_word_list(db: Session, topic: str, user_id: int, words: List[s
         if words:
             for word_to_add in words:
                 db_word = models.Word(
-                    **word_to_add.model_dump(), is_ai_generated=False)
+                    **word_to_add.model_dump(), isAIGenerated=False)
                 db_word.audioUrl = get_audio_url(db_word.word)
                 db.add(db_word)
                 db.flush()
@@ -193,14 +193,20 @@ def get_word_info(db: Session, word_id: int):
     db_word = get_word_by_id(db, word_id)
     db_word_list = get_word_list_by_id(db, db_word.wordListId)
     topic = db_word_list.title
-    word_info = spelltrain2AI.get_word_details(db_word.word, topic)
+    word_by_AI = spelltrain2AI.get_word_details(db_word.word, topic)
 
-    db_word.definition = word_info.definition
-    db_word.rootOrigin = word_info.rootOrigin
-    db_word.usage = word_info.usage
-    db_word.languageOrigin = word_info.languageOrigin
-    db_word.partsOfSpeech = word_info.partsOfSpeech
-    db_word.alternatePronunciation = word_info.alternatePronunciation
+    db_word.definition = word_by_AI.definition
+    db_word.rootOrigin = word_by_AI.rootOrigin
+    if db_word.word.lower() in word_by_AI.usage.lower():
+        db_word.usage = word_by_AI.usage
+    else:
+        print("Re-fetching usage...")
+        db_word.usage = spelltrain2AI.get_word_usage(
+            word=db_word.word, topic=db_word_list.title)
+
+    db_word.languageOrigin = word_by_AI.languageOrigin
+    db_word.partsOfSpeech = word_by_AI.partsOfSpeech
+    db_word.alternatePronunciation = word_by_AI.alternatePronunciation
 
     db.commit()
     db.refresh(db_word)
@@ -214,7 +220,7 @@ def add_words(db: Session, words: List[schemas.Word]):
         for word in words:
             word_to_add = word_dict(word.word)
             db_word = models.Word(
-                **word_to_add, wordListId=word.wordListId, is_ai_generated=False)
+                **word_to_add, wordListId=word.wordListId, isAIGenerated=False)
             db_word.audioUrl = get_audio_url(db_word.word)
             db.add(db_word)
             db.flush()

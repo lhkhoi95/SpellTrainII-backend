@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import JSON, Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -62,11 +62,29 @@ class Game(Base):
     __tablename__ = 'games'
 
     id = Column(Integer, primary_key=True)
-    level = Column(Integer, default=1)
-    games_bank = Column(String)
     startingIndex = Column(Integer, default=0)
     endingIndex = Column(Integer, default=0)
+
     wordListId = Column(
         Integer,
         ForeignKey('word_lists.id', ondelete="CASCADE"))
     wordList = relationship("WordList", back_populates="games")
+    stations = relationship(
+        "Station",
+        cascade="all, delete-orphan",
+        back_populates="game")
+
+
+class Station(Base):
+    __tablename__ = 'stations'
+
+    id = Column(Integer, primary_key=True)
+    stationNumber = Column(Integer)
+    level = Column(Integer, default=1)
+    isCompleted = Column(Boolean, default=False)
+    games = Column(JSON)
+
+    gameId = Column(
+        Integer,
+        ForeignKey('games.id', ondelete="CASCADE"))
+    game = relationship("Game", back_populates="stations")

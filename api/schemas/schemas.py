@@ -1,5 +1,5 @@
-from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Any, List, Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, Json
 
 
 class Word(BaseModel):
@@ -137,12 +137,30 @@ class EvaluatedTopic(EvaluatedInput):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StationBase(BaseModel):
+    level: int
+    games: Json[Any]
+    stationNumber: int
+    isCompleted: bool = False
+    gameId: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StationCreate(StationBase):
+    pass
+
+
+class Station(StationBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class GameBase(BaseModel):
-    level: int = 1
-    games_bank: str = ""
-    startingIndex: int = 0
-    endingIndex: int = 0
     wordListId: int
+    startingIndex: int
+    endingIndex: int
 
 
 class GameCreate(GameBase):
@@ -151,5 +169,6 @@ class GameCreate(GameBase):
 
 class Game(GameBase):
     id: int
+    stations: List[Station] = []
 
     model_config = ConfigDict(from_attributes=True)

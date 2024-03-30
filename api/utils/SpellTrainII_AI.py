@@ -9,7 +9,7 @@ from api.schemas.schemas import EvaluatedInput, EvaluatedTopic, WordInfo
 
 
 class SpellTrain2AI:
-    _NUMB_OF_WORDS = 30
+    _NUMB_OF_WORDS = 10
     _RETRY_COUNT = 1
 
     def __init__(self):

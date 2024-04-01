@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from api.dependencies import get_db
 from api.auth.auth_bearer import RequiredLogin
@@ -6,6 +6,7 @@ from api.crud.word_lists import get_word_info, get_word_list_by_id, get_more_wor
 from api.schemas.schemas import GameCreate, StationCreate
 from api.utils.game import Game
 from api.crud import games as games_crud
+from api.database import get_db_session
 import json
 
 
@@ -75,7 +76,7 @@ async def retrieve_games(word_list_id: int, db: Session = Depends(get_db), user_
 
 
 @router.patch("/")
-async def mark_level_as_completed(station_id: int, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+async def mark_level_as_completed(station_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     station_db = games_crud.find_station_by_id(db, station_id)
 
     if not station_db:
@@ -84,35 +85,12 @@ async def mark_level_as_completed(station_id: int, db: Session = Depends(get_db)
 
     # Check if user is the owner of the game
     owner = games_crud.find_owner_by_game_id(db, station_db.gameId)
-
     if int(owner.id) != int(user_id):
         raise HTTPException(
             status_code=401, detail="Unauthorized access")
 
-    # Make sure the word info for the next route is available if the current route is not the last route.
-    if station_db.route < MAX_ROUTES_ALLOWED:
-        game_db = games_crud.find_game_by_id(db, station_db.gameId)
-        index = game_db.endingIndex + station_db.level - 1
-        print(index)
-        word_list_db = get_word_list_by_id(db, game_db.wordListId, user_id)
-
-        # If no more words are available, fetch more words
-        if index >= len(word_list_db.words):
-            word_list_db = get_more_words(
-                db=db, word_list_id=game_db.wordListId)
-
-            if not word_list_db:
-                raise HTTPException(
-                    status_code=400, detail="Failed to fetch more words.")
-
-        word = word_list_db.words[index]
-
-        # Fetch the word information if not already fetched.
-        if word.languageOrigin == "" or word.usage == "" or word.definition == "":
-            fetched_word = get_word_info(db, word.id)
-            if not fetched_word:
-                raise HTTPException(
-                    status_code=400, detail="Failed to fetch word information.")
+    # Run the background task to prepare the next route
+    background_tasks.add_task(prepare_next_route, station_db, user_id,)
 
     return games_crud.mark_station_as_completed(db, station_id)
 
@@ -189,3 +167,33 @@ async def retrieve_games_for_next_route(game_id: int, db: Session = Depends(get_
     # Return the updated game and stations for the next route
     return games_crud.update_game_and_stations(
         db=db, game_id=game_db.id, stations=stations_models)
+
+
+def prepare_next_route(station_db, user_id):
+    try:
+        SessionLocal, _ = get_db_session()
+        db = SessionLocal()
+        if station_db.route < MAX_ROUTES_ALLOWED:
+            game_db = games_crud.find_game_by_id(db, station_db.gameId)
+            index = game_db.endingIndex + station_db.level - 1
+            word_list_db = get_word_list_by_id(db, game_db.wordListId, user_id)
+            print(index, len(word_list_db.words))
+            # If no more words are available, fetch more words
+            if index >= len(word_list_db.words):
+                word_list_db = get_more_words(
+                    db=db, word_list_id=game_db.wordListId)
+
+            if not word_list_db:
+                print("Failed to fetch more words")
+                return
+
+            word = word_list_db.words[index]
+
+            # Fetch the word information if not already fetched.
+            if word.languageOrigin == "" or word.usage == "" or word.definition == "":
+                fetch_word = get_word_info(db, word.id)
+                if not fetch_word:
+                    print("Failed to fetch word information")
+                    return
+    except Exception as e:
+        print(f"Failed to prepare next route: {e}")

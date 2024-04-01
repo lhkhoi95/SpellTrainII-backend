@@ -75,8 +75,8 @@ async def retrieve_games(word_list_id: int, db: Session = Depends(get_db), user_
     return games_crud.create_game_and_stations(db, game_model, stations_models)
 
 
-@router.patch("/")
-async def mark_level_as_completed(station_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
+@router.patch("/stations/{station_id}")
+async def mark_station_as_completed(station_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user_id=Depends(RequiredLogin())):
     station_db = games_crud.find_station_by_id(db, station_id)
 
     if not station_db:
@@ -177,7 +177,7 @@ def prepare_next_route(station_db, user_id):
             game_db = games_crud.find_game_by_id(db, station_db.gameId)
             index = game_db.endingIndex + station_db.level - 1
             word_list_db = get_word_list_by_id(db, game_db.wordListId, user_id)
-            print(index, len(word_list_db.words))
+
             # If no more words are available, fetch more words
             if index >= len(word_list_db.words):
                 word_list_db = get_more_words(

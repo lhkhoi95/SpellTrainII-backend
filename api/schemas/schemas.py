@@ -140,7 +140,7 @@ class EvaluatedTopic(EvaluatedInput):
 class StationBase(BaseModel):
     level: int
     games: Json[Any]
-    stationNumber: int
+    route: int
     isCompleted: bool = False
     gameId: Optional[int] = None
 
@@ -159,7 +159,6 @@ class Station(StationBase):
 
 class GameBase(BaseModel):
     wordListId: int
-    startingIndex: int
     endingIndex: int
 
 

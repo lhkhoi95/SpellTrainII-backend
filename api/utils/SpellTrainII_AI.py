@@ -9,8 +9,9 @@ from api.schemas.schemas import EvaluatedInput, EvaluatedTopic, WordInfo
 
 
 class SpellTrain2AI:
-    _NUMB_OF_WORDS = 10
+    _NUMB_OF_WORDS = 30
     _RETRY_COUNT = 1
+    _NUMB_OF_EXTRA_WORDS = 6
 
     def __init__(self):
         """
@@ -105,6 +106,8 @@ class SpellTrain2AI:
         """
         client = self._openai_client()
         user_prompt = f'Provide {self._NUMB_OF_WORDS} spelling bee words in English without dialect/accent related to the topic: {topic}.'
+        if existing_words is not None:
+            user_prompt += f'Provide {self._NUMB_OF_EXTRA_WORDS} spelling bee words in English without dialect/accent related to the topic: {topic}.'
 
         messages = [
             {'role': 'system', 'content': 'You are a helpful dictionary. You are asked to provide a list of words on a topic.'},

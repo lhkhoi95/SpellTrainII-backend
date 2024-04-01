@@ -62,7 +62,6 @@ class Game(Base):
     __tablename__ = 'games'
 
     id = Column(Integer, primary_key=True)
-    startingIndex = Column(Integer, default=0)
     endingIndex = Column(Integer, default=0)
 
     wordListId = Column(
@@ -79,7 +78,7 @@ class Station(Base):
     __tablename__ = 'stations'
 
     id = Column(Integer, primary_key=True)
-    stationNumber = Column(Integer)
+    route = Column(Integer)
     level = Column(Integer, default=1)
     isCompleted = Column(Boolean, default=False)
     games = Column(JSON)

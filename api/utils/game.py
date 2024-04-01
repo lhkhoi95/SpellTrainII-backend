@@ -185,7 +185,7 @@ class Game:
             find_missing_letter_bank.append({
                 "gameType": "findMissingLetter",
                 "gameTitle": "Find the Missing Letter",
-                "wordWithMissingLetter": word_with_blanks,
+                "options": word_with_blanks,
                 "correctAnswer": word_obj.word[letter_index],
             })
         random.shuffle(find_missing_letter_bank)

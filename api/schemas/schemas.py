@@ -2,6 +2,42 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, Json
 
 
+class StationBase(BaseModel):
+    level: int
+    games: Json[Any]
+    route: int
+    isCompleted: bool = False
+    gameId: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StationCreate(StationBase):
+    pass
+
+
+class Station(StationBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GameBase(BaseModel):
+    wordListId: int
+    endingIndex: int
+
+
+class GameCreate(GameBase):
+    pass
+
+
+class Game(GameBase):
+    id: int
+    stations: List[Station] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class Word(BaseModel):
     id: int
     word: str = Field(..., max_length=50, min_length=1)
@@ -134,40 +170,4 @@ class EvaluatedTopic(EvaluatedInput):
     reason: str
 
     # This allows us to convert any kind of objects to Pydantic models
-    model_config = ConfigDict(from_attributes=True)
-
-
-class StationBase(BaseModel):
-    level: int
-    games: Json[Any]
-    route: int
-    isCompleted: bool = False
-    gameId: Optional[int] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class StationCreate(StationBase):
-    pass
-
-
-class Station(StationBase):
-    id: int
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class GameBase(BaseModel):
-    wordListId: int
-    endingIndex: int
-
-
-class GameCreate(GameBase):
-    pass
-
-
-class Game(GameBase):
-    id: int
-    stations: List[Station] = []
-
     model_config = ConfigDict(from_attributes=True)

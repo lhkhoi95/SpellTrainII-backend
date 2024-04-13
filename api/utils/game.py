@@ -182,11 +182,15 @@ class Game:
 
             word_with_blanks = word_obj.word[:letter_index] + \
                 '_' + word_obj.word[letter_index + 1:]
+            missing_letter = word_obj.word[letter_index].lower()
+            options = self.generate_options(missing_letter)
+
             find_missing_letter_bank.append({
                 "gameType": "findMissingLetter",
                 "gameTitle": "Find the Missing Letter",
-                "options": word_with_blanks,
-                "correctAnswer": word_obj.word[letter_index],
+                "wordWithMissingLetter": word_with_blanks,
+                "options": options,
+                "correctAnswer": missing_letter,
             })
         random.shuffle(find_missing_letter_bank)
         return find_missing_letter_bank
@@ -263,3 +267,11 @@ class Game:
             })
         random.shuffle(find_correct_word_bank)
         return find_correct_word_bank
+
+    def generate_options(self, missing_letter):
+        all_letters = [chr(i).lower()
+                       for i in range(97, 123) if chr(i) != missing_letter]
+        additional_letters = random.sample(all_letters, k=5)
+        options = [missing_letter] + additional_letters
+        random.shuffle(options)
+        return options

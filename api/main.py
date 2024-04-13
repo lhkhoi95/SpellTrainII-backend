@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 
 from api.routers import games
+from api.utils import delete_orphaned_audio_files
 from .models import models
 from .database import get_db_session
 from .routers import users, word_lists
@@ -33,6 +34,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    delete_orphaned_audio_files.delete_orphaned_audio_files()
 
 
 @app.middleware("http")

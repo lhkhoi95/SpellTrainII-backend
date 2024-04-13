@@ -10,6 +10,10 @@ from api.utils.helpers import delete_audio_file, get_audio_url, word_dict
 from thefuzz import fuzz
 
 
+def get_all_words(db: Session):
+    return db.query(models.Word).all()
+
+
 def get_word_by_id(db: Session, word_id: int):
     return db.query(models.Word).filter(models.Word.id == word_id).first()
 

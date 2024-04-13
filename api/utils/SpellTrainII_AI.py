@@ -460,7 +460,8 @@ class SpellTrain2AI:
             if word.partsOfSpeech.lower() not in invalid_fields:
                 combined_results.partsOfSpeech = word.partsOfSpeech
             if word.alternatePronunciation.lower() not in invalid_fields:
-                combined_results.alternatePronunciation = word.alternatePronunciation
+                combined_results.alternatePronunciation = combined_results.alternatePronunciation.encode(
+                    "utf-8")
         print("FINAL RESULT: ", combined_results)
         return combined_results
 

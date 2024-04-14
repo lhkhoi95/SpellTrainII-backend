@@ -426,7 +426,7 @@ class SpellTrain2AI:
             Exception: If an error occurs during the retrieval process.
         """
         client = self._google_gemini_client(model=default_model)
-        prompt = f'The word "{word}" is related to the topic "{topic}". Provide information about this word: "{word}". The JSON response should be in the following format: {{"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "a short sentence that contains the word", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word."}}'
+        prompt = f'The word "{word}" is related to the topic "{topic}". Provide information about this word: "{word}". The JSON response should be in the following format: {{"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "A short sentence about {topic} that includes the word {word}", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word."}}'
 
         for i in range(self._RETRY_COUNT):
             try:
@@ -436,9 +436,6 @@ class SpellTrain2AI:
                 # Extract JSON response starting from the first '{' to the last '}'
                 json_text = response.text[response.text.find(
                     '{'):response.text.rfind('}') + 1]
-
-                # print("JSON response: ", json.dumps(
-                #     json.loads(json_text), indent=1))
 
                 json_response = json.loads(json_text)
 
@@ -478,7 +475,7 @@ class SpellTrain2AI:
         messages = [
             {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output JSON.'},
             {'role': 'system',
-                'content': 'The JSON response should be in the following format: {"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "usage of the word in a short sentence", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word.}'},
+                'content': 'The JSON response should be in the following format: {"word": "word", "definition": "simple definition within 7 words", "rootOrigin": "The root origin of a word refers to its earliest reconstructed ancestral form, revealing core historical meaning", "usage": "A short sentence about {topic} that includes the word {word}", "languageOrigin": "country where the the word comes from", "partsOfSpeech": "parts of speech", "alternatePronunciation": "International Phonetic Alphabet (IPA) pronunciation of the word.}'},
             {'role': 'system', 'content': 'If you have no result for a key-value pairs, leave it as "Unknown"'},
             {'role': 'user', 'content': user_prompt},
         ]

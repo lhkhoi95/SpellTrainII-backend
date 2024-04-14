@@ -2,7 +2,6 @@ import os
 from fastapi import Depends
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from api.auth.auth_bearer import RequiredLogin
 from api.crud import users as crud

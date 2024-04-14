@@ -201,16 +201,11 @@ def get_word_info(db: Session, word_id: int):
 
     db_word.definition = word_by_AI.definition
     db_word.rootOrigin = word_by_AI.rootOrigin
-    if db_word.word.lower() in word_by_AI.usage.lower():
-        db_word.usage = word_by_AI.usage
-    else:
-        print("Re-fetching usage...")
-        db_word.usage = spelltrain2AI.get_word_usage(
-            word=db_word.word, topic=db_word_list.title)
-
+    db_word.usage = word_by_AI.usage
     db_word.languageOrigin = word_by_AI.languageOrigin
     db_word.partsOfSpeech = word_by_AI.partsOfSpeech
-    db_word.alternatePronunciation = word_by_AI.alternatePronunciation
+    db_word.alternatePronunciation = word_by_AI.alternatePronunciation.encode(
+        'utf-8')
 
     db.commit()
     db.refresh(db_word)

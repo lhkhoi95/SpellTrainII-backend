@@ -10,7 +10,7 @@ from api.schemas.schemas import EvaluatedInput, EvaluatedTopic, WordInfo
 
 class SpellTrain2AI:
     _NUMB_OF_WORDS = 30
-    _RETRY_COUNT = 1
+    _RETRY_COUNT = 3
     _NUMB_OF_EXTRA_WORDS = 6
 
     def __init__(self):
@@ -167,7 +167,7 @@ class SpellTrain2AI:
              self._get_word_details_from_OPENAI, self.openai_gpt4_model),
         ]
 
-        results_with_unknown = []
+        error_words = []
 
         for model_name, get_details_func, model in models:
             print(f"\nTopic: {topic}\nModel: {model_name}")
@@ -179,29 +179,31 @@ class SpellTrain2AI:
 
                 if len(undesired_results) == 0:
                     print('Word: ', word.encode('utf-8'))
-                    word_details.alternatePronunciation = word_details.alternatePronunciation.encode(
-                        "utf-8")
+                    word_details.alternatePronunciation = word_details.alternatePronunciation
                     pprint(word_details)
                     print(f"{model_name} succeeded.")
                     return word_details
 
-                print(f"{model_name} failed.")
-                # Append results to list
-                results_with_unknown.append(word_details)
+                print(f"{model_name} failed the first time.")
+                error_words.append(word_details)
             except Exception as e:
                 print(e)
                 print(f"{model_name} failed.")
                 continue
 
-        return self._merge_results(results_with_unknown)
+        merged_word_details = self._merge_results(error_words)
+        # Refetch if there are unknown fields
+        return self._refetch_word_details(word=word, merged_word_details=merged_word_details, topic=topic)
 
-    def get_word_usage(self, word: str, topic: str) -> str:
-        prompt = f'Please provide a short sentence using the word "{word}" that is related to the topic "{topic}". The sentence should be concise and contain less than 7 words.'
+    def _get_word_usage(self, word: str, topic: str) -> str:
+        prompt = f'Please provide a short sentence using the word "{word}" that is related to the topic "{topic}".'
         client = self._openai_client()
 
         messages = [
             {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output a sentence using a word.'},
             {'role': 'system', 'content': 'The JSON response should be in the following format: {"usage": "Your sentence here."}'},
+            {'role': 'system', 'content': 'The sentence should be concise and contain less than 7 words.'},
+            {'role': 'system', 'content': 'If you are unsure, try to provide the most likely sentence based on the word itself.'},
             {'role': 'user', 'content': prompt},
         ]
         try:
@@ -222,14 +224,15 @@ class SpellTrain2AI:
 
         return json_response['usage']
 
-    def get_word_pronunciation(self, word: str) -> str:
-        prompt = f'Provide the International Phonetic Alphabet (IPA) pronunciation of the word "{word}".'
+    def _get_word_pronunciation(self, word: str, topic: str) -> str:
+        prompt = f'Provide the International Phonetic Alphabet (IPA) pronunciation of the word "{word}" related to {topic}.'
         client = self._openai_client()
 
         messages = [
             {'role': 'system',
                 'content': 'You are a helpful dictionary assistant designed to output the International Phonetic Alphabet (IPA) pronunciation of a word.'},
-            {'role': 'system', 'content': 'The JSON response should be in the following format: {"alternatePronunciation": "Your pronunciation here."}'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"alternatePronunciation": "result here"}'},
+            {'role': 'system', 'content': 'If you are unsure, try to provide the most likely pronunciation based on the word itself.'},
             {'role': 'user', 'content': prompt},
         ]
         try:
@@ -248,16 +251,17 @@ class SpellTrain2AI:
 
         json_response = json.loads(completion.choices[0].message.content)
 
-        return json_response['pronunciation']
+        return json_response['alternatePronunciation']
 
-    def get_language_of_origin(self, word: str) -> str:
-        prompt = f'What is the language of origin for the word "{word}"?'
+    def _get_language_of_origin(self, word: str, topic: str) -> str:
+        prompt = f'What is the language of origin for the word "{word}" related to {topic}?'
         client = self._openai_client()
 
         messages = [
             {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output the root origin of a word.'},
-            {'role': 'system', 'content': 'Here are some examples of root origins: Latin, Greek, French, etc. Please do not provide anything else except the root origin.'},
-            {'role': 'system', 'content': 'The JSON response should be in the following format: {"languageOrigin": "Your root origin here."}'},
+            {'role': 'system', 'content': 'Here are some examples of root origins: Latin, Greek, French, etc. Please do not provide anything else except the name of the country or language of origin.'},
+            {'role': 'system', 'content': 'If you are unsure, try to provide the most likely language of origin based on the word itself.'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"languageOrigin": "result here"}'},
             {'role': 'user', 'content': prompt},
         ]
 
@@ -279,14 +283,93 @@ class SpellTrain2AI:
 
         return json_response['languageOrigin']
 
-    def get_word_definition(self, word: str) -> str:
-        pass
+    def _get_word_definition(self, word: str, topic: str) -> str:
+        prompt = f'Provide a simple definition within 7 words for the word "{word}" related to {topic}.'
+        client = self._openai_client()
 
-    def get_word_parts_of_speech(self, word: str) -> str:
-        pass
+        messages = [
+            {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output a simple definition for a word.'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"definition": "result here"}'},
+            {'role': 'system', 'content': 'If you are unsure, try to provide the most likely definition based on the word itself.'},
+            {'role': 'system', 'content': 'The definition should be concise and contain less than 7 words.'},
+            {'role': 'user', 'content': prompt},
+        ]
 
-    def get_word_alternate_pronunciation(self, word: str) -> str:
-        pass
+        try:
+            completion = client.chat.completions.create(
+                messages=messages,
+                model=self.openai_model,
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=500, detail="Error getting word definition. Please try again later.")
+
+        self._print_cost(completion)
+
+        json_response = json.loads(completion.choices[0].message.content)
+
+        return json_response['definition']
+
+    def _get_word_parts_of_speech(self, word: str, topic: str) -> str:
+        prompt = f'Provide the parts of speech for the word "{word}" related to {topic}.'
+        client = self._openai_client()
+
+        messages = [
+            {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output the parts of speech for a word.'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"partsOfSpeech": "result here"}'},
+            {'role': 'system', 'content': 'If you are unsure, try to provide the most likely parts of speech based on the word itself.'},
+            {'role': 'user', 'content': prompt},
+        ]
+
+        try:
+            completion = client.chat.completions.create(
+                messages=messages,
+                model=self.openai_model,
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=500, detail="Error getting word parts of speech. Please try again later.")
+
+        self._print_cost(completion)
+
+        json_response = json.loads(completion.choices[0].message.content)
+
+        return json_response['partsOfSpeech']
+
+    def _get_root_origin(self, word: str, topic: str) -> str:
+        prompt = f'Provide a short sentence within 7 words that describes the Etymology of the word "{word}" related to "{topic}".'
+        client = self._openai_client()
+
+        messages = [
+            {'role': 'system', 'content': 'You are a helpful dictionary assistant designed to output the Etymology of a word.'},
+            {'role': 'system', 'content': 'The JSON response should be in the following format: {"rootOrigin": "result here"}'},
+            {'role': 'system', 'content': 'If you are unsure, try to provide the most likely Etymology based on the word itself.'},
+            {'role': 'user', 'content': prompt},
+        ]
+
+        try:
+            completion = client.chat.completions.create(
+                messages=messages,
+                model=self.openai_model,
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=500, detail="Error getting word root origin. Please try again later.")
+
+        self._print_cost(completion)
+
+        json_response = json.loads(completion.choices[0].message.content)
+
+        return json_response['rootOrigin']
 
     def _openai_client(self) -> OpenAI:
         """
@@ -460,8 +543,7 @@ class SpellTrain2AI:
             if word.partsOfSpeech.lower() not in invalid_fields:
                 combined_results.partsOfSpeech = word.partsOfSpeech
             if word.alternatePronunciation.lower() not in invalid_fields:
-                combined_results.alternatePronunciation = combined_results.alternatePronunciation.encode(
-                    "utf-8")
+                combined_results.alternatePronunciation = combined_results.alternatePronunciation
         print("FINAL RESULT: ", combined_results)
         return combined_results
 
@@ -492,3 +574,36 @@ class SpellTrain2AI:
             unknown_fields.append("alternatePronunciation")
 
         return unknown_fields
+
+    def _refetch_word_details(self, word: str, merged_word_details: WordInfo, topic: str):
+        cnt = 0
+        while cnt < self._RETRY_COUNT:
+            unknown_fields = self._validate_word_info(merged_word_details)
+            # If all fields are known, return the merged word details
+            if len(unknown_fields) == 0:
+                return merged_word_details
+
+            print(
+                f"Re-fetching word details...{cnt} times. Unknown fields: {unknown_fields} for word: {word}. Topic: {topic}.")
+            if "languageOrigin" in unknown_fields:
+                merged_word_details.languageOrigin = self._get_language_of_origin(
+                    word, topic)
+            if "usage" in unknown_fields:
+                merged_word_details.usage = self._get_word_usage(
+                    word, topic)
+            if "definition" in unknown_fields:
+                merged_word_details.definition = self._get_word_definition(
+                    word, topic)
+            if "alternatePronunciation" in unknown_fields:
+                merged_word_details.alternatePronunciation = self._get_word_pronunciation(
+                    word, topic)
+            if "partsOfSpeech" in unknown_fields:
+                merged_word_details.partsOfSpeech = self._get_word_parts_of_speech(
+                    word)
+            if "rootOrigin" in unknown_fields:
+                merged_word_details.rootOrigin = self._get_root_origin(
+                    word, topic)
+
+            cnt += 1
+
+        return merged_word_details

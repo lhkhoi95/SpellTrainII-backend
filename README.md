@@ -1,4 +1,9 @@
-# Create environment variables
+# Video Demo
+https://github.com/lhkhoi95/SpellTrainII-backend/assets/59894272/4546d708-4a4b-4734-ac5c-e863f680d8ca
+
+
+# Installation Guide
+## Create environment variables
 
 - In the backend directory, create a .env file and insert these variables:
 - `OPENAI_API_KEY=sk-xxxx` ([from OpenAI](https://platform.openai.com/api-keys))
@@ -8,19 +13,19 @@
 - `ALGORITHM=HS256`
 - `ACCESS_TOKEN_EXPIRE_MINUTES=43200`
 
-# Install required libraries
+## Install required libraries
 
 In the backend directory, run `pip install -r requirements.txt` to install required libraries.
 
-# Start the server
+## Start the server
 
 In the backend directory, run `uvicorn api.main:app --reload`
 
-# Accessing Swagger UI
+## Accessing Swagger UI
 
 The API endpoints UI should be accessible via [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-# API Testing
+## API Testing
 
 In the backend directory, run `pytest` to test the api endpoints
 
@@ -29,7 +34,7 @@ In the backend directory, run `pytest` to test the api endpoints
 - `pytest -v` will print more descriptive information
 - `pytest -s` will show all print statements in the program
 
-# Sending HTTP Requests (React Native):
+## Sending HTTP Requests (React Native Expo):
 
 - await axios.get(`http://{your_ip}:8000/`).then((res) => {console.log(res.data);});
 
@@ -43,7 +48,7 @@ In the backend directory, run `pytest` to test the api endpoints
 
 For example, await axios.get(`http://192.168.1.5:8000/`).then((res) => {console.log(res.data);});
 
-# Docker
+## Docker
 
 Download & Install Docker: https://www.docker.com/products/docker-desktop/
 
